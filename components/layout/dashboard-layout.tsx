@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sidebar, MobileSidebar } from "./sidebar";
 import { Navbar } from "./navbar";
 import { useStore } from "@/store";
+import { Logo } from "@/components/ui/logo";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -64,19 +65,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-indigo-500/10 blur-3xl animate-[pulse_6s_infinite]" />
                 <div className="flex flex-col items-center gap-4 relative z-10">
                     <div className="relative flex items-center justify-center">
-                        <div className="absolute h-16 w-16 rounded-2xl bg-primary/10 animate-ping border border-primary/20" />
-                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 animate-[spin_4s_linear_infinite]">
-                            <span className="text-white text-2xl font-bold leading-none select-none animate-[spin_4s_linear_infinite_reverse]">
-                                ₹
-                            </span>
-                        </div>
+                        <div className="absolute h-20 w-20 rounded-full bg-indigo-500/5 animate-ping border border-indigo-500/10" />
+                        <Logo iconSize={64} className="animate-[pulse_2s_infinite]" />
                     </div>
-                    <div className="flex flex-col items-center gap-1.5 mt-2">
-                        <h3 className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
+                    <div className="flex flex-col items-center gap-1.5 mt-4">
+                        <h3 className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-indigo-950 dark:from-white dark:to-indigo-200">
                             Cash ERP
                         </h3>
                         <p className="text-xs text-muted-foreground animate-pulse">
-                            Loading your data...
+                            Loading secure dashboard...
                         </p>
                     </div>
                 </div>

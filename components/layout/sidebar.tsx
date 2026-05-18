@@ -17,6 +17,7 @@ import {
     LogOut,
     Landmark,
 } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 
 const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -49,14 +50,9 @@ export function Sidebar() {
             <div className="flex h-16 shrink-0 items-center px-6">
                 <Link
                     href="/dashboard"
-                    className="flex items-center gap-2 font-bold text-xl tracking-tight"
+                    className="outline-none"
                 >
-                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                        <span className="text-primary-foreground text-lg">
-                            C
-                        </span>
-                    </div>
-                    Cash ERP
+                    <Logo iconSize={32} showText={true} textSize="text-xl" />
                 </Link>
             </div>
             <div className="flex flex-1 flex-col overflow-y-auto">
@@ -169,14 +165,9 @@ export function MobileSidebar({ onClose }: { onClose: () => void }) {
                 <Link
                     href="/dashboard"
                     onClick={onClose}
-                    className="flex items-center gap-2 font-bold text-xl tracking-tight"
+                    className="outline-none"
                 >
-                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                        <span className="text-primary-foreground text-lg">
-                            C
-                        </span>
-                    </div>
-                    Cash ERP
+                    <Logo iconSize={32} showText={true} textSize="text-xl" />
                 </Link>
             </div>
             <div className="flex flex-1 flex-col overflow-y-auto">

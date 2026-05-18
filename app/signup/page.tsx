@@ -26,6 +26,7 @@ import {
 } from "@/lib/firebase/config";
 import { useStore } from "@/store";
 import { toast } from "sonner";
+import { Logo } from "@/components/ui/logo";
 
 export default function SignupPage() {
     const { loginUser, user } = useStore();
@@ -122,9 +123,7 @@ export default function SignupPage() {
 
                 <CardHeader className="space-y-1 text-center relative z-10">
                     <div className="flex justify-center mb-4">
-                        <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                            <Wallet className="h-6 w-6 text-white" />
-                        </div>
+                        <Logo iconSize={48} />
                     </div>
                     <CardTitle className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
                         Create an account

@@ -16,6 +16,7 @@ import { useStore } from "@/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { DeleteModal } from "@/components/ui/delete-modal";
 import { toast } from "sonner";
+import { Logo } from "@/components/ui/logo";
 
 export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
     const { user, notifications, markNotificationRead, deleteNotification } =
@@ -72,18 +73,19 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
 
     return (
         <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-indigo-100/50 bg-white/60 backdrop-blur-xl px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-            <Button
-                variant="ghost"
-                size="icon"
-                className="-m-2.5 p-2.5 md:hidden"
-                onClick={onMenuClick}
-            >
-                <span className="sr-only">Open sidebar</span>
-                <Menu className="h-5 w-5" aria-hidden="true" />
-            </Button>
-
-            {/* Separator */}
-            <div className="h-6 w-px bg-border md:hidden" aria-hidden="true" />
+            <div className="flex items-center gap-1.5 md:hidden">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="p-1 text-muted-foreground hover:text-foreground"
+                    onClick={onMenuClick}
+                >
+                    <span className="sr-only">Open sidebar</span>
+                    <Menu className="h-5 w-5" aria-hidden="true" />
+                </Button>
+                <div className="h-4 w-px bg-indigo-100/60 mx-1" aria-hidden="true" />
+                <Logo iconSize={26} />
+            </div>
 
             <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
                 <form

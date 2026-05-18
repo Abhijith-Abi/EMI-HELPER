@@ -14,12 +14,35 @@ export const metadata: Metadata = {
     title: "Cash ERP | Personal Finance Dashboard",
     description: "Modern full-stack Personal Finance ERP Web Application",
     manifest: "/manifest.json",
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
     appleWebApp: {
         capable: true,
         statusBarStyle: "default",
         title: "Cash ERP",
     },
+    openGraph: {
+        title: "Cash ERP | Personal Finance Dashboard",
+        description: "Modern full-stack Personal Finance ERP Web Application",
+        siteName: "Cash ERP",
+        images: [
+            {
+                url: "/og-image.png",
+                width: 1200,
+                height: 630,
+                alt: "Cash ERP - Personal Finance Dashboard",
+            },
+        ],
+        locale: "en_US",
+        type: "website",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Cash ERP | Personal Finance Dashboard",
+        description: "Modern full-stack Personal Finance ERP Web Application",
+        images: ["/og-image.png"],
+    },
 };
+
 
 export default function RootLayout({
     children,
