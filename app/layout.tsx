@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     title: "Cash ERP | Personal Finance Dashboard",
     description: "Modern full-stack Personal Finance ERP Web Application",
     manifest: "/manifest.json",
-    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://emi-help.abisolutions.online"),
     appleWebApp: {
         capable: true,
         statusBarStyle: "default",
@@ -24,6 +24,7 @@ export const metadata: Metadata = {
         title: "Cash ERP | Personal Finance Dashboard",
         description: "Modern full-stack Personal Finance ERP Web Application",
         siteName: "Cash ERP",
+        url: "https://emi-help.abisolutions.online",
         images: [
             {
                 url: "/og-image.png",
