@@ -128,17 +128,19 @@ export default function GoalsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                         Financial Goals
                     </h2>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         Set targets and track your savings progress.
                     </p>
                 </div>
-                <Button onClick={openAddDialog}>
-                    <Plus className="mr-2 h-4 w-4" /> New Goal
+                <Button onClick={openAddDialog} className="shrink-0">
+                    <Plus className="mr-2 h-4 w-4" />{" "}
+                    <span className="hidden sm:inline">New Goal</span>
+                    <span className="sm:hidden">New</span>
                 </Button>
             </div>
 

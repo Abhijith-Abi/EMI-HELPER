@@ -73,7 +73,7 @@ export default function DashboardPage() {
         // Scan and trigger desktop notifications for EMIs due within 3 days
         triggerLocalDueNotifications(emis);
 
-        const { addNotification, notifications } = useStore.getState();
+        const { notifications, dismissedNotifications } = useStore.getState();
 
         // Add in-app notifications for EMIs due within 3 days
         emis.forEach((emi) => {
@@ -84,8 +84,8 @@ export default function DashboardPage() {
                 const alreadyExists = notifications.some(
                     (n) => n.id === notifId,
                 );
-                if (!alreadyExists) {
-                    // Use store's set directly to avoid infinite loop
+                const wasDismissed = dismissedNotifications.includes(notifId);
+                if (!alreadyExists && !wasDismissed) {
                     useStore.setState((state) => ({
                         notifications: [
                             {
@@ -112,23 +112,28 @@ export default function DashboardPage() {
                 getDaysRemaining(e.due_date) <= 5,
         ).length;
 
+        // Show these toast alerts only once per day
+        const todayStr = new Date().toISOString().split("T")[0];
+
         if (overdueCount > 0) {
-            toast.error(
-                `Warning: You have ${overdueCount} overdue EMI${overdueCount > 1 ? "s" : ""}! Please pay them immediately.`,
-                {
-                    id: "overdue-alert",
-                    duration: 8000,
-                },
-            );
+            const key = `toast-overdue-${todayStr}`;
+            if (!localStorage.getItem(key)) {
+                localStorage.setItem(key, "1");
+                toast.error(
+                    `Warning: You have ${overdueCount} overdue EMI${overdueCount > 1 ? "s" : ""}! Please pay them immediately.`,
+                    { id: "overdue-alert", duration: 8000 },
+                );
+            }
         }
         if (dueSoonCount > 0) {
-            toast.warning(
-                `Notice: ${dueSoonCount} EMI${dueSoonCount > 1 ? "s are" : " is"} due within the next 5 days.`,
-                {
-                    id: "due-soon-alert",
-                    duration: 6000,
-                },
-            );
+            const key = `toast-duesoon-${todayStr}`;
+            if (!localStorage.getItem(key)) {
+                localStorage.setItem(key, "1");
+                toast.warning(
+                    `Notice: ${dueSoonCount} EMI${dueSoonCount > 1 ? "s are" : " is"} due within the next 5 days.`,
+                    { id: "due-soon-alert", duration: 6000 },
+                );
+            }
         }
     }, [mounted, emis]);
 
@@ -204,7 +209,7 @@ export default function DashboardPage() {
         >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                         Welcome back,{" "}
                         {user?.name ? user.name.split(" ")[0] : "User"}!
                     </h2>
@@ -217,13 +222,13 @@ export default function DashboardPage() {
             {totalEMI > (user?.salary || 0) * 0.5 && (
                 <Alert
                     variant="destructive"
-                    className="glassmorphism border-l-4 border-l-red-500 bg-red-950/20 text-red-200"
+                    className="glassmorphism border-l-4 border-l-red-500 bg-red-50 text-red-700"
                 >
-                    <AlertCircle className="h-4 w-4 text-red-400" />
-                    <AlertTitle className="text-red-400 font-semibold">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <AlertTitle className="text-red-600 font-semibold">
                         High EMI Burden Warning
                     </AlertTitle>
-                    <AlertDescription className="text-red-200/90 text-xs">
+                    <AlertDescription className="text-red-600/90 text-xs">
                         Your total EMI (₹{totalEMI.toLocaleString()}) exceeds
                         50% of your monthly salary (₹
                         {(user?.salary || 0).toLocaleString()}). Avoid taking
@@ -339,7 +344,7 @@ export default function DashboardPage() {
             {/* Monthly EMI Due Reminders & Alerts */}
             <motion.div variants={itemVariants} className="mt-6">
                 <Card className="glassmorphism">
-                    <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-white/5">
+                    <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
                         <div>
                             <CardTitle className="text-lg font-bold tracking-tight">
                                 EMI Due Reminders & Notifications
@@ -348,7 +353,7 @@ export default function DashboardPage() {
                                 Month-wise active schedules and payment status
                             </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
                                 Select Month:
                             </span>
@@ -357,7 +362,7 @@ export default function DashboardPage() {
                                 onChange={(e) =>
                                     setSelectedMonth(e.target.value)
                                 }
-                                className="bg-card/60 backdrop-blur-xl border border-white/10 rounded-lg px-3 py-1.5 text-sm font-semibold text-foreground outline-none cursor-pointer hover:bg-card/80 transition-all"
+                                className="flex-1 sm:flex-none bg-white border border-border rounded-lg px-3 py-1.5 text-sm font-semibold text-foreground outline-none cursor-pointer hover:bg-muted/50 transition-all"
                             >
                                 {emiMonths.map((m) => (
                                     <option
@@ -392,12 +397,12 @@ export default function DashboardPage() {
                                             whileHover={{ scale: 1.01 }}
                                             className={`relative flex flex-col justify-between p-4 rounded-xl border transition-all duration-300 ${
                                                 isPaid
-                                                    ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-300"
+                                                    ? "bg-emerald-50 border-emerald-200"
                                                     : isOverdue
-                                                      ? "bg-red-500/5 border-red-500/10 text-red-300 shadow-[0_0_15px_-3px_rgba(239,68,68,0.08)] animate-[pulse_3s_infinite]"
+                                                      ? "bg-red-50 border-red-200 shadow-[0_0_15px_-3px_rgba(239,68,68,0.08)]"
                                                       : isDueSoon
-                                                        ? "bg-amber-500/5 border-amber-500/10 text-amber-300 shadow-[0_0_15px_-3px_rgba(245,158,11,0.08)]"
-                                                        : "bg-blue-500/5 border-blue-500/10 text-blue-300"
+                                                        ? "bg-amber-50 border-amber-200 shadow-[0_0_15px_-3px_rgba(245,158,11,0.08)]"
+                                                        : "bg-blue-50 border-blue-200"
                                             }`}
                                         >
                                             <div className="flex items-start justify-between gap-2">
@@ -444,7 +449,7 @@ export default function DashboardPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
+                                            <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                                                 <div>
                                                     <span className="text-[11px] text-muted-foreground block">
                                                         Amount
@@ -460,8 +465,8 @@ export default function DashboardPage() {
                                                     }
                                                     className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
                                                         isPaid
-                                                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                                                            : "border-white/10 bg-background/50 text-foreground hover:bg-white/5"
+                                                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                                                            : "border-border bg-white text-foreground hover:bg-muted"
                                                     }`}
                                                 >
                                                     {isPaid
@@ -532,7 +537,7 @@ export default function DashboardPage() {
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
                 <motion.div
                     variants={itemVariants}
-                    className="col-span-1 lg:col-span-4"
+                    className="col-span-1 lg:col-span-4 min-w-0"
                 >
                     <Card className="h-full glassmorphism">
                         <CardHeader>
@@ -626,7 +631,7 @@ export default function DashboardPage() {
 
                 <motion.div
                     variants={itemVariants}
-                    className="col-span-1 lg:col-span-3"
+                    className="col-span-1 lg:col-span-3 min-w-0"
                 >
                     <Card className="h-full glassmorphism">
                         <CardHeader>

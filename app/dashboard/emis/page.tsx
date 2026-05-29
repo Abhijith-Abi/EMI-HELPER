@@ -144,17 +144,19 @@ export default function EMIManagementPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                         EMI Management
                     </h2>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         Track and manage your active loans and EMIs.
                     </p>
                 </div>
-                <Button onClick={openAddDialog}>
-                    <Plus className="mr-2 h-4 w-4" /> Add EMI
+                <Button onClick={openAddDialog} className="shrink-0">
+                    <Plus className="mr-2 h-4 w-4" />{" "}
+                    <span className="hidden sm:inline">Add EMI</span>
+                    <span className="sm:hidden">Add</span>
                 </Button>
             </div>
 
@@ -163,99 +165,109 @@ export default function EMIManagementPage() {
                     <CardTitle>Active EMIs</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Loan Title</TableHead>
-                                <TableHead>Amount (₹)</TableHead>
-                                <TableHead>Interest</TableHead>
-                                <TableHead>Months Left</TableHead>
-                                <TableHead>Due Date</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">
-                                    Actions
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {emis.map((emi) => (
-                                <TableRow key={emi.id}>
-                                    <TableCell className="font-medium">
-                                        {emi.title}
-                                    </TableCell>
-                                    <TableCell>
-                                        ₹{emi.emi_amount.toLocaleString()}
-                                    </TableCell>
-                                    <TableCell>{emi.interest_rate}%</TableCell>
-                                    <TableCell>
-                                        {emi.remaining_months} /{" "}
-                                        {emi.total_months}
-                                    </TableCell>
-                                    <TableCell>{emi.due_date}</TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant={
-                                                emi.status === "Active"
-                                                    ? "default"
-                                                    : "secondary"
-                                            }
-                                        >
-                                            {emi.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right space-x-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() =>
-                                                handleToggleStatus(
-                                                    emi.id,
-                                                    emi.status,
-                                                )
-                                            }
-                                            title={
-                                                emi.status === "Active"
-                                                    ? "Mark as Paid"
-                                                    : "Mark as Active"
-                                            }
-                                        >
-                                            <Check
-                                                className={`h-4 w-4 ${emi.status === "Paid" ? "text-muted-foreground" : "text-emerald-500"}`}
-                                            />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => openEditDialog(emi)}
-                                            title="Edit Loan"
-                                        >
-                                            <Edit className="h-4 w-4 text-blue-500" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() =>
-                                                triggerDelete(emi.id, emi.title)
-                                            }
-                                            title="Delete Loan"
-                                        >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {emis.length === 0 && (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell
-                                        colSpan={7}
-                                        className="text-center text-muted-foreground py-8"
-                                    >
-                                        No EMIs found. Add one to get started!
-                                    </TableCell>
+                                    <TableHead>Loan Title</TableHead>
+                                    <TableHead>Amount (₹)</TableHead>
+                                    <TableHead>Interest</TableHead>
+                                    <TableHead>Months Left</TableHead>
+                                    <TableHead>Due Date</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">
+                                        Actions
+                                    </TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {emis.map((emi) => (
+                                    <TableRow key={emi.id}>
+                                        <TableCell className="font-medium">
+                                            {emi.title}
+                                        </TableCell>
+                                        <TableCell>
+                                            ₹{emi.emi_amount.toLocaleString()}
+                                        </TableCell>
+                                        <TableCell>
+                                            {emi.interest_rate}%
+                                        </TableCell>
+                                        <TableCell>
+                                            {emi.remaining_months} /{" "}
+                                            {emi.total_months}
+                                        </TableCell>
+                                        <TableCell>{emi.due_date}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={
+                                                    emi.status === "Active"
+                                                        ? "default"
+                                                        : "secondary"
+                                                }
+                                            >
+                                                {emi.status}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right space-x-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    handleToggleStatus(
+                                                        emi.id,
+                                                        emi.status,
+                                                    )
+                                                }
+                                                title={
+                                                    emi.status === "Active"
+                                                        ? "Mark as Paid"
+                                                        : "Mark as Active"
+                                                }
+                                            >
+                                                <Check
+                                                    className={`h-4 w-4 ${emi.status === "Paid" ? "text-muted-foreground" : "text-emerald-500"}`}
+                                                />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    openEditDialog(emi)
+                                                }
+                                                title="Edit Loan"
+                                            >
+                                                <Edit className="h-4 w-4 text-blue-500" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    triggerDelete(
+                                                        emi.id,
+                                                        emi.title,
+                                                    )
+                                                }
+                                                title="Delete Loan"
+                                            >
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {emis.length === 0 && (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={7}
+                                            className="text-center text-muted-foreground py-8"
+                                        >
+                                            No EMIs found. Add one to get
+                                            started!
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
 

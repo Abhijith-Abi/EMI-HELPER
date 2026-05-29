@@ -267,74 +267,76 @@ export default function ExpensesPage() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Title</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead className="text-right">
-                                    Amount (₹)
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    Actions
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredExpenses.map((expense) => (
-                                <TableRow key={expense.id}>
-                                    <TableCell className="font-medium">
-                                        {expense.title}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">
-                                            {expense.category}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{expense.date}</TableCell>
-                                    <TableCell className="text-right font-medium">
-                                        ₹{expense.amount.toLocaleString()}
-                                    </TableCell>
-                                    <TableCell className="text-right space-x-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() =>
-                                                openEditDialog(expense)
-                                            }
-                                            title="Edit Expense"
-                                        >
-                                            <Edit className="h-4 w-4 text-blue-500" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() =>
-                                                triggerDelete(
-                                                    expense.id,
-                                                    expense.title,
-                                                )
-                                            }
-                                            title="Delete Expense"
-                                        >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {filteredExpenses.length === 0 && (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell
-                                        colSpan={5}
-                                        className="text-center text-muted-foreground py-8"
-                                    >
-                                        No expenses logged for this period.
-                                    </TableCell>
+                                    <TableHead>Title</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead className="text-right">
+                                        Amount (₹)
+                                    </TableHead>
+                                    <TableHead className="text-right">
+                                        Actions
+                                    </TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredExpenses.map((expense) => (
+                                    <TableRow key={expense.id}>
+                                        <TableCell className="font-medium">
+                                            {expense.title}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline">
+                                                {expense.category}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{expense.date}</TableCell>
+                                        <TableCell className="text-right font-medium">
+                                            ₹{expense.amount.toLocaleString()}
+                                        </TableCell>
+                                        <TableCell className="text-right space-x-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    openEditDialog(expense)
+                                                }
+                                                title="Edit Expense"
+                                            >
+                                                <Edit className="h-4 w-4 text-blue-500" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    triggerDelete(
+                                                        expense.id,
+                                                        expense.title,
+                                                    )
+                                                }
+                                                title="Delete Expense"
+                                            >
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {filteredExpenses.length === 0 && (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={5}
+                                            className="text-center text-muted-foreground py-8"
+                                        >
+                                            No expenses logged for this period.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
 

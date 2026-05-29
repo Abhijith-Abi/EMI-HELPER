@@ -78,6 +78,7 @@ interface AppState {
     addNotification: (title: string, body: string) => void;
     markNotificationRead: (id: string) => void;
     deleteNotification: (id: string) => void;
+    dismissedNotifications: string[];
     clearAllData: () => void;
     loginUser: (firebaseUser: any) => Promise<void>;
     logoutUser: () => void;
@@ -114,6 +115,7 @@ export const useStore = create<AppState>()(
             expenses: DEMO_EXPENSES,
             goals: DEMO_GOALS,
             notifications: DEMO_NOTIFICATIONS,
+            dismissedNotifications: [],
             setUser: (userData) => {
                 set((state) => ({
                     user: state.user
@@ -238,6 +240,10 @@ export const useStore = create<AppState>()(
                     notifications: state.notifications.filter(
                         (n) => n.id !== id,
                     ),
+                    dismissedNotifications: [
+                        ...state.dismissedNotifications,
+                        id,
+                    ],
                 }));
                 syncCloud(get().user?.id, get);
             },

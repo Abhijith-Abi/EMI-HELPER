@@ -63,7 +63,7 @@ export default function RootLayout({
     return (
         <html lang="en" suppressHydrationWarning>
             <body
-                className={`${inter.variable} font-sans min-h-screen flex flex-col antialiased`}
+                className={`${inter.variable} font-sans min-h-screen flex flex-col antialiased overflow-x-hidden`}
                 suppressHydrationWarning
             >
                 <ThemeProvider

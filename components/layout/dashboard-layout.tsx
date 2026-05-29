@@ -101,10 +101,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
             )}
 
-            <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex flex-1 flex-col overflow-hidden min-w-0">
                 <Navbar onMenuClick={() => setSidebarOpen(true)} />
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                    <div className="mx-auto max-w-6xl">{children}</div>
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8">
+                    <div className="mx-auto w-full max-w-6xl min-w-0">
+                        {children}
+                    </div>
                 </main>
             </div>
             <AIAssistant />

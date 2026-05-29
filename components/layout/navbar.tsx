@@ -90,9 +90,9 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                 <Logo iconSize={26} />
             </div>
 
-            <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+            <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 min-w-0">
                 <form
-                    className="relative flex flex-1 items-center"
+                    className="relative flex flex-1 items-center min-w-0"
                     action="#"
                     method="GET"
                 >
@@ -117,7 +117,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="-m-2.5 p-2.5 text-muted-foreground hover:text-foreground relative"
+                            className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
                             onClick={() =>
                                 setShowNotifications(!showNotifications)
                             }
@@ -125,8 +125,8 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                             <span className="sr-only">View notifications</span>
                             <Bell className="h-5 w-5" aria-hidden="true" />
                             {unreadCount > 0 && (
-                                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground animate-pulse">
-                                    {unreadCount}
+                                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
+                                    {unreadCount > 9 ? "9+" : unreadCount}
                                 </span>
                             )}
                         </Button>
