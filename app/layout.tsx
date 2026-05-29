@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -10,11 +10,22 @@ const inter = Inter({
     subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+    themeColor: "#6366f1",
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+};
+
 export const metadata: Metadata = {
     title: "Cash ERP | Personal Finance Dashboard",
     description: "Modern full-stack Personal Finance ERP Web Application",
     manifest: "/manifest.json",
-    metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://emi-help.abisolutions.online"),
+    metadataBase: new URL(
+        process.env.NEXT_PUBLIC_APP_URL ||
+            "https://emi-help.abisolutions.online",
+    ),
     appleWebApp: {
         capable: true,
         statusBarStyle: "default",
@@ -44,7 +55,6 @@ export const metadata: Metadata = {
     },
 };
 
-
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -64,7 +74,12 @@ export default function RootLayout({
                 >
                     <PWARegister />
                     {children}
-                    <Toaster position="top-right" />
+                    <Toaster
+                        position="top-center"
+                        expand
+                        richColors
+                        closeButton
+                    />
                 </ThemeProvider>
             </body>
         </html>

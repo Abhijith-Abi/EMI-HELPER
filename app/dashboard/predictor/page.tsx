@@ -56,6 +56,7 @@ import {
     type FinancialWarning,
     type AIInsight,
 } from "@/lib/engines/recovery-engine";
+import { AIAnalysisCard } from "@/components/ai-analysis-card";
 
 export default function PredictorPage() {
     const { emis, expenses, user, goals } = useStore();
@@ -330,6 +331,16 @@ export default function PredictorPage() {
             {/* OVERVIEW TAB */}
             {activeTab === "overview" && (
                 <div className="space-y-6">
+                    {/* AI Deep Analysis */}
+                    <AIAnalysisCard
+                        title="AI Recovery Plan"
+                        description="Get a personalized debt recovery strategy from AI based on your real data"
+                        buttonLabel="Generate My Recovery Plan"
+                        cacheKey="recovery-plan"
+                        autoGenerate
+                        prompt="Analyze my complete financial situation and create a detailed, step-by-step debt recovery plan. Include: 1) Which specific loan to attack first and why, 2) Exactly how much extra I should pay monthly, 3) My realistic debt-free timeline, 4) Top 3 spending cuts with rupee amounts, 5) An emergency fund target. Be specific with my actual numbers and end with an encouraging note."
+                    />
+
                     {/* AI Insights */}
                     <Card className="glassmorphism">
                         <CardHeader>
@@ -482,6 +493,15 @@ export default function PredictorPage() {
             {/* STRATEGY TAB */}
             {activeTab === "strategy" && (
                 <div className="space-y-6">
+                    {/* AI Strategy Advisor */}
+                    <AIAnalysisCard
+                        title="AI Strategy Advisor"
+                        description="Get AI guidance on the best repayment strategy for your loans"
+                        buttonLabel="Get Strategy Advice"
+                        cacheKey="strategy-advisor"
+                        autoGenerate
+                        prompt="Compare the Snowball and Avalanche debt repayment strategies for MY specific loans. Tell me: 1) Which strategy is best for my situation and exactly why, 2) The exact order I should pay off my loans, 3) How much total interest I'll save with the better method, 4) A realistic monthly extra payment I can afford, 5) Whether psychological motivation (Snowball) or pure savings (Avalanche) matters more for me. Use my actual loan names, amounts, and interest rates."
+                    />
                     {activeEmis.length >= 2 ? (
                         <>
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -717,6 +737,15 @@ export default function PredictorPage() {
             {/* FORECAST TAB */}
             {activeTab === "forecast" && (
                 <div className="space-y-6">
+                    {/* AI Forecast Analyst */}
+                    <AIAnalysisCard
+                        title="AI Forecast Analyst"
+                        description="AI predicts your financial future and flags risks ahead"
+                        buttonLabel="Analyze My Future"
+                        cacheKey="forecast-analyst"
+                        autoGenerate
+                        prompt="Based on my current finances, forecast my financial situation over the next 12 months. Tell me: 1) What my savings will look like in 6 and 12 months if nothing changes, 2) Which month my finances improve significantly (when an EMI ends), 3) Any month where I might face a cash crunch, 4) My projected net worth growth, 5) Two specific actions to improve my 12-month outlook. Use my actual numbers and be realistic."
+                    />
                     {mounted && forecast.length > 0 && salary > 0 ? (
                         <>
                             <Card className="glassmorphism">
@@ -915,6 +944,15 @@ export default function PredictorPage() {
             {/* WARNINGS TAB */}
             {activeTab === "warnings" && (
                 <div className="space-y-4">
+                    {/* AI Risk Prevention Coach */}
+                    <AIAnalysisCard
+                        title="AI Risk Prevention Coach"
+                        description="AI predicts upcoming financial risks and how to prevent them"
+                        buttonLabel="Predict My Risks"
+                        cacheKey="risk-prevention"
+                        autoGenerate
+                        prompt="Act as my early-warning financial risk coach. Analyze my data and predict: 1) Any EMI I might struggle to pay in the next 30 days and why, 2) Whether I'm at risk of running out of cash before month-end, 3) Signs of financial burnout or overspending in my patterns, 4) My single biggest financial danger right now, 5) Three specific preventive actions to take THIS WEEK. Be direct and protective, using my actual numbers."
+                    />
                     {warnings.length > 0 ? (
                         warnings.map((w) => (
                             <Card

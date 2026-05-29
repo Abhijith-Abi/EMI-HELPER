@@ -50,7 +50,8 @@ export async function requestNotificationPermissionAndRegisterToken(
 }
 
 /**
- * Scans all unpaid EMIs due within 3 days and triggers desktop notifications
+ * Scans all unpaid EMIs due within 3 days and triggers notifications.
+ * Uses the service worker for mobile/PWA reliability, de-dupes per day.
  */
 export function triggerLocalDueNotifications(emis: any[]) {
     if (typeof window === "undefined" || emis.length === 0) return;
@@ -60,6 +61,12 @@ export function triggerLocalDueNotifications(emis: any[]) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const notifiedKey = `notified_${today.toISOString().split("T")[0]}`;
+    let notified: string[] = [];
+    try {
+        notified = JSON.parse(localStorage.getItem(notifiedKey) || "[]");
+    } catch {}
+
     emis.forEach((emi) => {
         if (emi.status !== "Active") return;
 
@@ -68,23 +75,49 @@ export function triggerLocalDueNotifications(emis: any[]) {
         const diffTime = dueDate.getTime() - today.getTime();
         const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (daysRemaining >= 0 && daysRemaining <= 3) {
-            try {
-                const notification = new Notification(
-                    `🚨 EMI Payment Due: ${emi.title}`,
-                    {
-                        body: `Amount: ₹${emi.emi_amount.toLocaleString()} is due on ${emi.due_date} (in ${daysRemaining} days)!`,
-                        icon: "/icons/icon-192x192.png",
-                        tag: `emi-due-${emi.id}`,
-                    },
-                );
+        if (
+            daysRemaining >= 0 &&
+            daysRemaining <= 3 &&
+            !notified.includes(emi.id)
+        ) {
+            const title =
+                daysRemaining === 0
+                    ? `🚨 EMI Due TODAY: ${emi.title}`
+                    : `⏰ EMI Due in ${daysRemaining} day${daysRemaining > 1 ? "s" : ""}: ${emi.title}`;
+            const body = `₹${emi.emi_amount.toLocaleString()} is due on ${emi.due_date}. Don't miss it!`;
 
-                notification.onclick = () => {
-                    window.focus();
-                    notification.close();
-                };
-            } catch (err) {
-                console.error("Failed to display notification:", err);
+            const show = (reg?: ServiceWorkerRegistration) => {
+                try {
+                    if (reg) {
+                        reg.showNotification(title, {
+                            body,
+                            icon: "/icons/icon-192x192.png",
+                            badge: "/icons/icon-192x192.png",
+                            tag: `emi-due-${emi.id}`,
+                            data: { url: "/dashboard" },
+                        } as NotificationOptions);
+                    } else {
+                        const n = new Notification(title, {
+                            body,
+                            icon: "/icons/icon-192x192.png",
+                            tag: `emi-due-${emi.id}`,
+                        });
+                        n.onclick = () => {
+                            window.focus();
+                            n.close();
+                        };
+                    }
+                    notified.push(emi.id);
+                    localStorage.setItem(notifiedKey, JSON.stringify(notified));
+                } catch (err) {
+                    console.error("Failed to display notification:", err);
+                }
+            };
+
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.ready.then(show).catch(() => show());
+            } else {
+                show();
             }
         }
     });

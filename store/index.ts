@@ -74,6 +74,7 @@ interface AppState {
     addGoal: (goal: Goal) => void;
     updateGoal: (goal: Goal) => void;
     deleteGoal: (id: string) => void;
+    addToGoalSavings: (id: string, amount: number) => void;
     addNotification: (title: string, body: string) => void;
     markNotificationRead: (id: string) => void;
     deleteNotification: (id: string) => void;
@@ -82,12 +83,17 @@ interface AppState {
     logoutUser: () => void;
 }
 
+let syncTimeout: any = null;
+
 const syncCloud = (
     userId: string | undefined,
     getLatestState: () => AppState,
 ) => {
     if (userId && userId !== "1") {
-        queueMicrotask(() => {
+        if (syncTimeout) {
+            clearTimeout(syncTimeout);
+        }
+        syncTimeout = setTimeout(() => {
             const state = getLatestState();
             saveUserDataToCloud(userId, {
                 user: state.user,
@@ -96,7 +102,7 @@ const syncCloud = (
                 goals: state.goals || [],
                 notifications: state.notifications || [],
             });
-        });
+        }, 1500); // 1.5s debounce to optimize database writes and UI smoothness
     }
 };
 
@@ -193,6 +199,16 @@ export const useStore = create<AppState>()(
             deleteGoal: (id) => {
                 set((state) => ({
                     goals: state.goals.filter((g) => g.id !== id),
+                }));
+                syncCloud(get().user?.id, get);
+            },
+            addToGoalSavings: (id, amount) => {
+                set((state) => ({
+                    goals: state.goals.map((g) =>
+                        g.id === id
+                            ? { ...g, saved_amount: g.saved_amount + amount }
+                            : g,
+                    ),
                 }));
                 syncCloud(get().user?.id, get);
             },

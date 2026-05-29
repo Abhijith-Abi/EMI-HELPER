@@ -12,7 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Edit, Calendar } from "lucide-react";
+import { Plus, Trash2, Edit, Calendar, Sparkles, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
     Dialog,
@@ -62,6 +62,47 @@ export default function ExpensesPage() {
     const [amount, setAmount] = useState("");
     const [category, setCategory] = useState("Food");
     const [date, setDate] = useState("");
+
+    // AI Smart Add
+    const [smartText, setSmartText] = useState("");
+    const [smartLoading, setSmartLoading] = useState(false);
+
+    const handleSmartAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!smartText.trim() || smartLoading) return;
+        setSmartLoading(true);
+        try {
+            const res = await fetch("/api/ai-parse", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: smartText }),
+            });
+            const data = await res.json();
+            if (data.expense && data.expense.amount > 0) {
+                addExpense({
+                    id: String(Date.now()),
+                    title: data.expense.title || "Expense",
+                    amount: Number(data.expense.amount),
+                    category: data.expense.category || "Others",
+                    date:
+                        data.expense.date ||
+                        new Date().toISOString().split("T")[0],
+                });
+                toast.success(
+                    `Added: ${data.expense.title} — ₹${Number(data.expense.amount).toLocaleString()} (${data.expense.category})`,
+                );
+                setSmartText("");
+            } else {
+                toast.error(
+                    "Couldn't understand that. Try: 'spent 500 on groceries'",
+                );
+            }
+        } catch {
+            toast.error("AI parsing failed. Please try the manual form.");
+        } finally {
+            setSmartLoading(false);
+        }
+    };
 
     const openAddDialog = () => {
         setEditingExpense(null);
@@ -183,6 +224,39 @@ export default function ExpensesPage() {
                     </Button>
                 </div>
             </div>
+
+            {/* AI Smart Add */}
+            <Card className="glassmorphism border-violet-500/20">
+                <CardContent className="py-4">
+                    <form
+                        onSubmit={handleSmartAdd}
+                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
+                    >
+                        <div className="flex items-center gap-2 flex-1">
+                            <Sparkles className="h-4 w-4 text-violet-500 shrink-0" />
+                            <input
+                                value={smartText}
+                                onChange={(e) => setSmartText(e.target.value)}
+                                placeholder="Smart Add: type 'spent 500 on groceries yesterday'"
+                                className="flex-1 h-10 px-2 bg-transparent text-sm outline-none"
+                            />
+                        </div>
+                        <Button
+                            type="submit"
+                            disabled={smartLoading || !smartText.trim()}
+                            className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white"
+                        >
+                            {smartLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <>
+                                    <Sparkles className="mr-2 h-4 w-4" /> AI Add
+                                </>
+                            )}
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
 
             <Card className="glassmorphism">
                 <CardHeader>

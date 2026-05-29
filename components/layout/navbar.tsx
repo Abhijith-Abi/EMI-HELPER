@@ -83,7 +83,10 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                     <span className="sr-only">Open sidebar</span>
                     <Menu className="h-5 w-5" aria-hidden="true" />
                 </Button>
-                <div className="h-4 w-px bg-indigo-100/60 mx-1" aria-hidden="true" />
+                <div
+                    className="h-4 w-px bg-indigo-100/60 mx-1"
+                    aria-hidden="true"
+                />
                 <Logo iconSize={26} />
             </div>
 
@@ -139,7 +142,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                                         type: "spring",
                                         duration: 0.3,
                                     }}
-                                    className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-2xl border bg-card/95 shadow-2xl backdrop-blur-2xl p-4 glassmorphism z-50 ring-1 ring-black/5"
+                                    className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-2xl border border-indigo-100 bg-white shadow-2xl p-4 z-50"
                                 >
                                     <div className="flex items-center justify-between border-b pb-2 mb-2">
                                         <h3 className="text-sm font-bold text-foreground">
@@ -170,8 +173,8 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                                                     key={n.id}
                                                     className={`relative rounded-xl border p-3 transition-colors ${
                                                         n.read
-                                                            ? "bg-transparent border-border/40"
-                                                            : "bg-primary/5 border-primary/20"
+                                                            ? "bg-muted/40 border-border"
+                                                            : "bg-indigo-50 border-indigo-200"
                                                     }`}
                                                 >
                                                     <div className="flex items-start justify-between gap-2">

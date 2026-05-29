@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Sidebar, MobileSidebar } from "./sidebar";
 import { Navbar } from "./navbar";
+import { AIAssistant } from "@/components/ai-assistant";
 import { useStore } from "@/store";
 import { Logo } from "@/components/ui/logo";
 
@@ -66,7 +67,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <div className="flex flex-col items-center gap-4 relative z-10">
                     <div className="relative flex items-center justify-center">
                         <div className="absolute h-20 w-20 rounded-full bg-indigo-500/5 animate-ping border border-indigo-500/10" />
-                        <Logo iconSize={64} className="animate-[pulse_2s_infinite]" />
+                        <Logo
+                            iconSize={64}
+                            className="animate-[pulse_2s_infinite]"
+                        />
                     </div>
                     <div className="flex flex-col items-center gap-1.5 mt-4">
                         <h3 className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-indigo-950 dark:from-white dark:to-indigo-200">
@@ -103,6 +107,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <div className="mx-auto max-w-6xl">{children}</div>
                 </main>
             </div>
+            <AIAssistant />
         </div>
     );
 }

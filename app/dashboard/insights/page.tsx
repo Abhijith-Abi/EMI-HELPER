@@ -19,6 +19,7 @@ import {
     Zap,
     Repeat,
 } from "lucide-react";
+import { AIAnalysisCard } from "@/components/ai-analysis-card";
 
 export default function InsightsPage() {
     const { emis, user, expenses, goals } = useStore();
@@ -222,40 +223,99 @@ export default function InsightsPage() {
                 </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-                {insights.map((insight) => (
-                    <Card key={insight.id} className="glassmorphism">
-                        <CardHeader className="flex flex-row items-center gap-4">
-                            <div className={`p-3 rounded-full ${insight.bg}`}>
-                                <insight.icon
-                                    className={`h-5 w-5 ${insight.color}`}
-                                />
-                            </div>
-                            <div>
-                                <CardTitle className="text-base">
-                                    {insight.title}
-                                </CardTitle>
-                                <CardDescription className="text-[10px] uppercase tracking-wider mt-0.5">
-                                    {insight.type}
-                                </CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">
-                                {insight.description}
+            {/* AI Deep Analysis Section — TOP */}
+            <div>
+                <div className="flex items-center gap-2 mb-1">
+                    <Brain className="h-5 w-5 text-violet-500" />
+                    <h3 className="text-lg font-bold tracking-tight">
+                        AI Deep Analysis
+                    </h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                    Let AI analyze specific areas of your finances in depth — in
+                    English or മലയാളം.
+                </p>
+                <div className="grid gap-4 lg:grid-cols-2">
+                    <AIAnalysisCard
+                        title="Spending Optimizer"
+                        description="Find hidden money leaks and waste in your expenses"
+                        buttonLabel="Analyze My Spending"
+                        cacheKey="spending-optimizer"
+                        autoGenerate
+                        prompt="Analyze my expense categories in detail. Identify: 1) My top 3 spending leaks with exact amounts, 2) Any recurring or subscription-like expenses I should review, 3) Specific categories where I'm overspending compared to ideal budgets, 4) How much I could realistically save per month by cutting waste. Give exact rupee amounts and be specific."
+                    />
+                    <AIAnalysisCard
+                        title="Savings Booster"
+                        description="A personalized plan to maximize your monthly savings"
+                        buttonLabel="Boost My Savings"
+                        cacheKey="savings-booster"
+                        autoGenerate
+                        prompt="Create a personalized savings strategy for me. Include: 1) My ideal monthly savings target based on my income, 2) A simple budget split (needs/wants/savings) with rupee amounts, 3) 3 specific actions to increase savings this month, 4) Where to park my savings (emergency fund, investments). Use my actual numbers and keep it practical."
+                    />
+                    <AIAnalysisCard
+                        title="Risk Assessment"
+                        description="Identify financial risks before they become problems"
+                        buttonLabel="Assess My Risks"
+                        cacheKey="risk-assessment"
+                        autoGenerate
+                        prompt="Assess my financial risks. Identify: 1) My biggest financial vulnerability right now, 2) What happens if I lose income for a month, 3) Whether my EMI burden is sustainable, 4) Early warning signs I should watch for, 5) 3 protective actions to take. Be honest but constructive with my actual data."
+                    />
+                    <AIAnalysisCard
+                        title="Goal Planner"
+                        description="A roadmap to achieve your financial goals faster"
+                        buttonLabel="Plan My Goals"
+                        cacheKey="goal-planner"
+                        autoGenerate
+                        prompt="Help me achieve my financial goals faster. Analyze my goals and: 1) Tell me if each goal is realistic with my current savings rate, 2) Suggest a monthly contribution for each goal, 3) Recommend which goal to prioritize, 4) Show how cutting expenses could speed up my goals. If I have no goals, suggest 3 important financial goals I should set. Use my actual numbers."
+                    />
+                </div>
+            </div>
+
+            {/* Quick rule-based insights */}
+            <div>
+                <h3 className="text-lg font-bold tracking-tight mb-1">
+                    Quick Insights
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                    Instant analysis based on your numbers.
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                    {insights.map((insight) => (
+                        <Card key={insight.id} className="glassmorphism">
+                            <CardHeader className="flex flex-row items-center gap-4">
+                                <div
+                                    className={`p-3 rounded-full ${insight.bg}`}
+                                >
+                                    <insight.icon
+                                        className={`h-5 w-5 ${insight.color}`}
+                                    />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-base">
+                                        {insight.title}
+                                    </CardTitle>
+                                    <CardDescription className="text-[10px] uppercase tracking-wider mt-0.5">
+                                        {insight.type}
+                                    </CardDescription>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">
+                                    {insight.description}
+                                </p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    {insights.length === 0 && (
+                        <div className="col-span-full py-12 text-center text-muted-foreground">
+                            <Brain className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                            <p className="text-sm">
+                                Add your salary, EMIs, and expenses to generate
+                                smart insights.
                             </p>
-                        </CardContent>
-                    </Card>
-                ))}
-                {insights.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-muted-foreground">
-                        <Brain className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                        <p className="text-sm">
-                            Add your salary, EMIs, and expenses to generate
-                            smart insights.
-                        </p>
-                    </div>
-                )}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

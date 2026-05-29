@@ -5,7 +5,7 @@ import { useStore, Goal } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Plus, Target, Edit2, Trash2 } from "lucide-react";
+import { Plus, Target, Edit2, Trash2, PiggyBank } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -21,11 +21,17 @@ import { DeleteModal } from "@/components/ui/delete-modal";
 import { DatePicker } from "@/components/ui/date-picker";
 
 export default function GoalsPage() {
-    const { goals, addGoal, updateGoal, deleteGoal } = useStore();
+    const { goals, addGoal, updateGoal, deleteGoal, addToGoalSavings } =
+        useStore();
 
     // Dialog controls
     const [open, setOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+
+    // Add Savings dialog
+    const [savingsOpen, setSavingsOpen] = useState(false);
+    const [savingsGoal, setSavingsGoal] = useState<Goal | null>(null);
+    const [contribution, setContribution] = useState("");
 
     // Proper Delete Modal controls
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -92,6 +98,32 @@ export default function GoalsPage() {
     const handleConfirmDelete = () => {
         deleteGoal(targetDeleteId);
         toast.success("Savings goal deleted successfully!");
+    };
+
+    const openSavingsDialog = (goal: Goal) => {
+        setSavingsGoal(goal);
+        setContribution("");
+        setSavingsOpen(true);
+    };
+
+    const handleAddSavings = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!savingsGoal || !contribution || Number(contribution) <= 0) {
+            toast.error("Enter a valid amount.");
+            return;
+        }
+        addToGoalSavings(savingsGoal.id, Number(contribution));
+        const newTotal = savingsGoal.saved_amount + Number(contribution);
+        if (newTotal >= savingsGoal.target_amount) {
+            toast.success(
+                `🎉 Goal "${savingsGoal.title}" reached! Congratulations!`,
+            );
+        } else {
+            toast.success(
+                `Added ₹${Number(contribution).toLocaleString()} to "${savingsGoal.title}"!`,
+            );
+        }
+        setSavingsOpen(false);
     };
 
     return (
@@ -166,6 +198,18 @@ export default function GoalsPage() {
                                     <span>{progress}% Completed</span>
                                     <span>Deadline: {goal.deadline}</span>
                                 </div>
+                                <Button
+                                    onClick={() => openSavingsDialog(goal)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-3 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700"
+                                    disabled={progress >= 100}
+                                >
+                                    <PiggyBank className="mr-2 h-3.5 w-3.5" />
+                                    {progress >= 100
+                                        ? "Goal Reached! 🎉"
+                                        : "Add Savings"}
+                                </Button>
                             </CardContent>
                         </Card>
                     );
@@ -258,6 +302,66 @@ export default function GoalsPage() {
                             <Button type="submit">
                                 {editingGoal ? "Save Changes" : "Create Goal"}
                             </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add Savings Dialog */}
+            <Dialog open={savingsOpen} onOpenChange={setSavingsOpen}>
+                <DialogContent className="glassmorphism max-w-sm w-full">
+                    <DialogHeader>
+                        <DialogTitle>Add to Savings</DialogTitle>
+                        <DialogDescription>
+                            {savingsGoal &&
+                                `Contribute toward "${savingsGoal.title}". Currently ₹${savingsGoal.saved_amount.toLocaleString()} of ₹${savingsGoal.target_amount.toLocaleString()}.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        onSubmit={handleAddSavings}
+                        className="space-y-4 py-2"
+                    >
+                        <div className="space-y-1">
+                            <Label htmlFor="contribution">
+                                Amount to Add (₹) *
+                            </Label>
+                            <Input
+                                id="contribution"
+                                type="number"
+                                placeholder="5000"
+                                value={contribution}
+                                onChange={(e) =>
+                                    setContribution(e.target.value)
+                                }
+                                autoFocus
+                                required
+                            />
+                        </div>
+                        {savingsGoal && (
+                            <div className="flex gap-2">
+                                {[1000, 5000, 10000].map((amt) => (
+                                    <button
+                                        key={amt}
+                                        type="button"
+                                        onClick={() =>
+                                            setContribution(String(amt))
+                                        }
+                                        className="flex-1 text-xs py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-50 transition-colors"
+                                    >
+                                        +₹{amt.toLocaleString()}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        <DialogFooter className="mt-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setSavingsOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button type="submit">Add Savings</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>

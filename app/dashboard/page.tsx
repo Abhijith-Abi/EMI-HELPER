@@ -34,6 +34,7 @@ import {
     requestNotificationPermissionAndRegisterToken,
     triggerLocalDueNotifications,
 } from "@/lib/firebase/messaging";
+import { DailyBriefing } from "@/components/daily-briefing";
 
 const COLORS = ["#6366f1", "#06b6d4", "#f59e0b", "#ec4899", "#8b5cf6"];
 
@@ -204,7 +205,8 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight">
-                        Welcome back, {user?.name?.split(" ")[0]}!
+                        Welcome back,{" "}
+                        {user?.name ? user.name.split(" ")[0] : "User"}!
                     </h2>
                     <p className="text-muted-foreground">
                         Here's your financial overview for this month.
@@ -224,11 +226,16 @@ export default function DashboardPage() {
                     <AlertDescription className="text-red-200/90 text-xs">
                         Your total EMI (₹{totalEMI.toLocaleString()}) exceeds
                         50% of your monthly salary (₹
-                        {user?.salary.toLocaleString()}). Avoid taking new loans
-                        to maintain financial stability.
+                        {(user?.salary || 0).toLocaleString()}). Avoid taking
+                        new loans to maintain financial stability.
                     </AlertDescription>
                 </Alert>
             )}
+
+            {/* Daily AI Briefing — auto-generates once per day */}
+            <motion.div variants={itemVariants}>
+                <DailyBriefing />
+            </motion.div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <motion.div variants={itemVariants} className="h-full">
@@ -243,7 +250,7 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-                                ₹{user?.salary.toLocaleString()}
+                                ₹{(user?.salary || 0).toLocaleString()}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
                                 Net monthly income
@@ -324,173 +331,6 @@ export default function DashboardPage() {
                                       ? "Needs attention"
                                       : "Critical state"}
                             </p>
-                        </CardContent>
-                    </Card>
-                </motion.div>
-            </div>
-
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
-                <motion.div
-                    variants={itemVariants}
-                    className="col-span-1 lg:col-span-4"
-                >
-                    <Card className="h-full glassmorphism">
-                        <CardHeader>
-                            <CardTitle>EMI Distribution</CardTitle>
-                        </CardHeader>
-                        <CardContent className="h-[300px] min-h-[300px] w-full relative">
-                            {mounted && emiData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={emiData}
-                                        margin={{ bottom: 10 }}
-                                    >
-                                        <defs>
-                                            <linearGradient
-                                                id="emiGradient"
-                                                x1="0"
-                                                y1="0"
-                                                x2="0"
-                                                y2="1"
-                                            >
-                                                <stop
-                                                    offset="0%"
-                                                    stopColor="#6366f1"
-                                                    stopOpacity={0.95}
-                                                />
-                                                <stop
-                                                    offset="100%"
-                                                    stopColor="#3b82f6"
-                                                    stopOpacity={0.2}
-                                                />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            vertical={false}
-                                            stroke="rgba(120,119,198,0.1)"
-                                        />
-                                        <XAxis
-                                            dataKey="name"
-                                            stroke="#94a3b8"
-                                            fontSize={11}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis
-                                            stroke="#94a3b8"
-                                            fontSize={11}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            tickFormatter={(value) =>
-                                                `₹${value}`
-                                            }
-                                        />
-                                        <Tooltip
-                                            cursor={{
-                                                fill: "rgba(120, 119, 198, 0.05)",
-                                            }}
-                                            contentStyle={{
-                                                backgroundColor:
-                                                    "hsl(var(--card)/0.8)",
-                                                backdropFilter: "blur(12px)",
-                                                border: "1px solid hsl(var(--border))",
-                                                borderRadius: "12px",
-                                                boxShadow:
-                                                    "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-                                            }}
-                                        />
-                                        <Legend
-                                            verticalAlign="bottom"
-                                            height={36}
-                                            iconType="circle"
-                                        />
-                                        <Bar
-                                            name="EMI Amount (₹)"
-                                            dataKey="amount"
-                                            fill="url(#emiGradient)"
-                                            radius={[6, 6, 0, 0]}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
-                                    {mounted && emiData.length === 0
-                                        ? "No active EMIs to display. Add one in EMI Manager!"
-                                        : "Loading chart..."}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </motion.div>
-
-                <motion.div
-                    variants={itemVariants}
-                    className="col-span-1 lg:col-span-3"
-                >
-                    <Card className="h-full glassmorphism">
-                        <CardHeader>
-                            <CardTitle>Expense Breakdown</CardTitle>
-                        </CardHeader>
-                        <CardContent className="h-[300px] min-h-[300px] w-full relative flex flex-col items-center justify-center">
-                            {mounted && expenseData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={expenseData}
-                                            cx="50%"
-                                            cy="45%"
-                                            innerRadius={65}
-                                            outerRadius={85}
-                                            paddingAngle={4}
-                                            dataKey="value"
-                                        >
-                                            {expenseData.map(
-                                                (entry: any, index: number) => (
-                                                    <Cell
-                                                        key={`cell-${index}`}
-                                                        fill={
-                                                            COLORS[
-                                                                index %
-                                                                    COLORS.length
-                                                            ]
-                                                        }
-                                                        stroke="hsl(var(--card))"
-                                                        strokeWidth={3}
-                                                    />
-                                                ),
-                                            )}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor:
-                                                    "hsl(var(--card)/0.8)",
-                                                backdropFilter: "blur(12px)",
-                                                border: "1px solid hsl(var(--border))",
-                                                borderRadius: "12px",
-                                                boxShadow:
-                                                    "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
-                                            }}
-                                        />
-                                        <Legend
-                                            layout="horizontal"
-                                            verticalAlign="bottom"
-                                            align="center"
-                                            iconType="circle"
-                                            wrapperStyle={{
-                                                fontSize: "11px",
-                                                paddingTop: "10px",
-                                            }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
-                                    {mounted && expenseData.length === 0
-                                        ? "No expenses logged yet. Add one in Expenses!"
-                                        : "Loading chart..."}
-                                </div>
-                            )}
                         </CardContent>
                     </Card>
                 </motion.div>
@@ -688,6 +528,173 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </motion.div>
+
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
+                <motion.div
+                    variants={itemVariants}
+                    className="col-span-1 lg:col-span-4"
+                >
+                    <Card className="h-full glassmorphism">
+                        <CardHeader>
+                            <CardTitle>EMI Distribution</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[300px] min-h-[300px] w-full relative">
+                            {mounted && emiData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={emiData}
+                                        margin={{ bottom: 10 }}
+                                    >
+                                        <defs>
+                                            <linearGradient
+                                                id="emiGradient"
+                                                x1="0"
+                                                y1="0"
+                                                x2="0"
+                                                y2="1"
+                                            >
+                                                <stop
+                                                    offset="0%"
+                                                    stopColor="#6366f1"
+                                                    stopOpacity={0.95}
+                                                />
+                                                <stop
+                                                    offset="100%"
+                                                    stopColor="#3b82f6"
+                                                    stopOpacity={0.2}
+                                                />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid
+                                            strokeDasharray="3 3"
+                                            vertical={false}
+                                            stroke="rgba(120,119,198,0.1)"
+                                        />
+                                        <XAxis
+                                            dataKey="name"
+                                            stroke="#94a3b8"
+                                            fontSize={11}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <YAxis
+                                            stroke="#94a3b8"
+                                            fontSize={11}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(value) =>
+                                                `₹${value}`
+                                            }
+                                        />
+                                        <Tooltip
+                                            cursor={{
+                                                fill: "rgba(120, 119, 198, 0.05)",
+                                            }}
+                                            contentStyle={{
+                                                backgroundColor:
+                                                    "hsl(var(--card)/0.8)",
+                                                backdropFilter: "blur(12px)",
+                                                border: "1px solid hsl(var(--border))",
+                                                borderRadius: "12px",
+                                                boxShadow:
+                                                    "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                                            }}
+                                        />
+                                        <Legend
+                                            verticalAlign="bottom"
+                                            height={36}
+                                            iconType="circle"
+                                        />
+                                        <Bar
+                                            name="EMI Amount (₹)"
+                                            dataKey="amount"
+                                            fill="url(#emiGradient)"
+                                            radius={[6, 6, 0, 0]}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
+                                    {mounted && emiData.length === 0
+                                        ? "No active EMIs to display. Add one in EMI Manager!"
+                                        : "Loading chart..."}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </motion.div>
+
+                <motion.div
+                    variants={itemVariants}
+                    className="col-span-1 lg:col-span-3"
+                >
+                    <Card className="h-full glassmorphism">
+                        <CardHeader>
+                            <CardTitle>Expense Breakdown</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[300px] min-h-[300px] w-full relative flex flex-col items-center justify-center">
+                            {mounted && expenseData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={expenseData}
+                                            cx="50%"
+                                            cy="45%"
+                                            innerRadius={65}
+                                            outerRadius={85}
+                                            paddingAngle={4}
+                                            dataKey="value"
+                                        >
+                                            {expenseData.map(
+                                                (entry: any, index: number) => (
+                                                    <Cell
+                                                        key={`cell-${index}`}
+                                                        fill={
+                                                            COLORS[
+                                                                index %
+                                                                    COLORS.length
+                                                            ]
+                                                        }
+                                                        stroke="hsl(var(--card))"
+                                                        strokeWidth={3}
+                                                    />
+                                                ),
+                                            )}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor:
+                                                    "hsl(var(--card)/0.8)",
+                                                backdropFilter: "blur(12px)",
+                                                border: "1px solid hsl(var(--border))",
+                                                borderRadius: "12px",
+                                                boxShadow:
+                                                    "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                                            }}
+                                        />
+                                        <Legend
+                                            layout="horizontal"
+                                            verticalAlign="bottom"
+                                            align="center"
+                                            iconType="circle"
+                                            wrapperStyle={{
+                                                fontSize: "11px",
+                                                paddingTop: "10px",
+                                            }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
+                                    {mounted && expenseData.length === 0
+                                        ? "No expenses logged yet. Add one in Expenses!"
+                                        : "Loading chart..."}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </motion.div>
+            </div>
         </motion.div>
     );
 }
