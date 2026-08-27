@@ -2,13 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useStore } from "@/store";
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-    CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
     AreaChart,
     Area,
@@ -18,8 +12,6 @@ import {
     Tooltip,
     ResponsiveContainer,
     Legend,
-    BarChart,
-    Bar,
     LineChart,
     Line,
 } from "recharts";
@@ -29,14 +21,13 @@ import {
     Sparkles,
     AlertTriangle,
     ShieldCheck,
-    Lightbulb,
-    Calendar,
-    IndianRupee,
     Target,
     Zap,
     Heart,
-    Clock,
     Flame,
+    CreditCard,
+    Calendar,
+    ArrowRight,
 } from "lucide-react";
 import {
     calculateRiskLevel,
@@ -49,148 +40,98 @@ import {
     generateAIInsights,
     generate12MonthForecast,
     type RiskLevel,
-    type HealthScoreBreakdown,
-    type SurvivalAnalysis,
-    type StrategyResult,
-    type EMIPressure,
-    type FinancialWarning,
-    type AIInsight,
 } from "@/lib/engines/recovery-engine";
 import { AIAnalysisCard } from "@/components/ai-analysis-card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function PredictorPage() {
     const { emis, expenses, user, goals } = useStore();
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<
-        "overview" | "strategy" | "forecast" | "warnings"
-    >("overview");
+    const [activeTab, setActiveTab] = useState<"overview" | "strategy" | "forecast" | "warnings">("overview");
+    const [extraPayment, setExtraPayment] = useState<number>(0);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
     const salary = user?.salary || 0;
-    const activeEmis = emis.filter((e) => e.status === "Active");
-    const totalMonthlyEmi = activeEmis.reduce((s, e) => s + e.emi_amount, 0);
+    const activeEmis = useMemo(
+        () => emis.filter((e) => e.status === "Active" && e.remaining_months > 0),
+        [emis],
+    );
+    const totalMonthlyEmi = useMemo(
+        () => activeEmis.reduce((s, e) => s + e.emi_amount, 0),
+        [activeEmis],
+    );
     const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
     const avgMonthlyExpenses =
         expenses.length > 0
-            ? totalExpenses /
-              Math.max(
-                  1,
-                  new Set(expenses.map((e) => e.date.substring(0, 7))).size,
-              )
+            ? totalExpenses / Math.max(1, new Set(expenses.map((e) => e.date.substring(0, 7))).size)
             : 0;
-    const totalDebt = activeEmis.reduce(
-        (s, e) => s + e.emi_amount * e.remaining_months,
-        0,
-    );
+    const totalDebt = activeEmis.reduce((s, e) => s + e.emi_amount * e.remaining_months, 0);
     const maxMonths =
-        activeEmis.length > 0
-            ? Math.max(...activeEmis.map((e) => e.remaining_months))
-            : 0;
-    const monthlySavings = salary - totalMonthlyEmi - avgMonthlyExpenses;
+        activeEmis.length > 0 ? Math.max(...activeEmis.map((e) => e.remaining_months)) : 0;
 
     // Computed data
-    const riskLevel = useMemo(
-        () => calculateRiskLevel(totalMonthlyEmi, salary),
-        [totalMonthlyEmi, salary],
-    );
+    const riskLevel = useMemo(() => calculateRiskLevel(totalMonthlyEmi, salary), [totalMonthlyEmi, salary]);
     const survival = useMemo(
         () => calculateSurvival(salary, totalMonthlyEmi, expenses),
         [salary, totalMonthlyEmi, expenses],
     );
     const healthScore = useMemo(
-        () =>
-            calculateHealthScore(
-                salary,
-                totalMonthlyEmi,
-                avgMonthlyExpenses,
-                totalDebt,
-                goals,
-            ),
+        () => calculateHealthScore(salary, totalMonthlyEmi, avgMonthlyExpenses, totalDebt, goals),
         [salary, totalMonthlyEmi, avgMonthlyExpenses, totalDebt, goals],
     );
-    const snowball = useMemo(() => calculateSnowball(emis), [emis]);
-    const avalanche = useMemo(() => calculateAvalanche(emis), [emis]);
 
-    // Merge strategy data into single dataset for chart
+    const snowball = useMemo(() => calculateSnowball(activeEmis, extraPayment), [activeEmis, extraPayment]);
+    const avalanche = useMemo(() => calculateAvalanche(activeEmis, extraPayment), [activeEmis, extraPayment]);
+
+    // Merge strategy data for chart
     const strategyChartData = useMemo(() => {
-        const maxMonth = Math.max(
-            avalanche.totalMonths,
-            snowball.totalMonths,
-            1,
-        );
-        const data: { month: number; avalanche: number; snowball: number }[] =
-            [];
+        const maxMonth = Math.max(avalanche.totalMonths, snowball.totalMonths, 1);
+        const data: { month: number; avalanche: number; snowball: number }[] = [];
         for (let m = 0; m <= maxMonth; m++) {
             const aPoint = avalanche.monthlyData.find((d) => d.month === m);
             const sPoint = snowball.monthlyData.find((d) => d.month === m);
             const aVal = aPoint
                 ? aPoint.totalDebt
-                : (avalanche.monthlyData.filter((d) => d.month <= m).pop()
-                      ?.totalDebt ?? 0);
+                : (avalanche.monthlyData.filter((d) => d.month <= m).pop()?.totalDebt ?? 0);
             const sVal = sPoint
                 ? sPoint.totalDebt
-                : (snowball.monthlyData.filter((d) => d.month <= m).pop()
-                      ?.totalDebt ?? 0);
-            if (
-                m % Math.max(1, Math.ceil(maxMonth / 24)) === 0 ||
-                m === maxMonth
-            ) {
+                : (snowball.monthlyData.filter((d) => d.month <= m).pop()?.totalDebt ?? 0);
+            if (m % Math.max(1, Math.ceil(maxMonth / 20)) === 0 || m === maxMonth) {
                 data.push({ month: m, avalanche: aVal, snowball: sVal });
             }
         }
         return data;
     }, [avalanche, snowball]);
 
-    const emiPressure = useMemo(
-        () => calculateEMIPressure(emis, salary),
-        [emis, salary],
-    );
+    const emiPressure = useMemo(() => calculateEMIPressure(activeEmis, salary), [activeEmis, salary]);
     const warnings = useMemo(
-        () => generateWarnings(salary, totalMonthlyEmi, expenses, emis),
-        [salary, totalMonthlyEmi, expenses, emis],
+        () => generateWarnings(salary, totalMonthlyEmi, expenses, activeEmis),
+        [salary, totalMonthlyEmi, expenses, activeEmis],
     );
     const insights = useMemo(
-        () =>
-            generateAIInsights(
-                salary,
-                totalMonthlyEmi,
-                avgMonthlyExpenses,
-                emis,
-                maxMonths,
-            ),
-        [salary, totalMonthlyEmi, avgMonthlyExpenses, emis, maxMonths],
+        () => generateAIInsights(salary, totalMonthlyEmi, avgMonthlyExpenses, activeEmis, maxMonths),
+        [salary, totalMonthlyEmi, avgMonthlyExpenses, activeEmis, maxMonths],
     );
     const forecast = useMemo(
-        () =>
-            generate12MonthForecast(
-                salary,
-                totalMonthlyEmi,
-                avgMonthlyExpenses,
-                emis,
-            ),
-        [salary, totalMonthlyEmi, avgMonthlyExpenses, emis],
+        () => generate12MonthForecast(salary, totalMonthlyEmi, avgMonthlyExpenses, activeEmis),
+        [salary, totalMonthlyEmi, avgMonthlyExpenses, activeEmis],
     );
 
     const riskColors: Record<RiskLevel, string> = {
-        Safe: "text-emerald-500",
-        Moderate: "text-amber-500",
-        "High Risk": "text-orange-500",
-        Critical: "text-red-500",
-    };
-    const riskBg: Record<RiskLevel, string> = {
-        Safe: "bg-emerald-500/10",
-        Moderate: "bg-amber-500/10",
-        "High Risk": "bg-orange-500/10",
-        Critical: "bg-red-500/10",
+        Safe: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+        Moderate: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+        "High Risk": "text-orange-400 border-orange-500/30 bg-orange-500/10",
+        Critical: "text-rose-400 border-rose-500/30 bg-rose-500/10",
     };
 
     const tabs = [
         { id: "overview" as const, label: "Overview", icon: Brain },
-        { id: "strategy" as const, label: "Strategy", icon: Target },
-        { id: "forecast" as const, label: "Forecast", icon: TrendingDown },
+        { id: "strategy" as const, label: "Repayment Strategy", icon: Target },
+        { id: "forecast" as const, label: "12-Month Forecast", icon: TrendingDown },
         {
             id: "warnings" as const,
             label: `Warnings${warnings.length > 0 ? ` (${warnings.length})` : ""}`,
@@ -198,129 +139,87 @@ export default function PredictorPage() {
         },
     ];
 
-    const debtFreeDate =
-        maxMonths > 0
-            ? (() => {
-                  const d = new Date();
-                  d.setMonth(d.getMonth() + maxMonths);
-                  return d;
-              })()
-            : null;
-    const debtPaidPercent =
-        activeEmis.length > 0
-            ? Math.round(
-                  (activeEmis.reduce(
-                      (s, e) =>
-                          s +
-                          (e.total_months - e.remaining_months) /
-                              e.total_months,
-                      0,
-                  ) /
-                      activeEmis.length) *
-                      100,
-              )
-            : 100;
-
     return (
         <div className="space-y-6">
+            {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">
-                        AI Recovery Engine
+                    <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        <Brain className="h-6 w-6 text-indigo-400" />
+                        AI Debt Recovery & Forecast Engine
                     </h2>
-                    <p className="text-muted-foreground">
-                        AI-powered debt recovery, predictions & financial
-                        intelligence.
+                    <p className="text-sm text-slate-400">
+                        Amortization modeling, Avalanche/Snowball payoff strategies, and 12-month balance forecasts.
                     </p>
                 </div>
-                <div
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold ${riskBg[riskLevel]} ${riskColors[riskLevel]}`}
-                >
-                    {riskLevel}
+                <div className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border ${riskColors[riskLevel]}`}>
+                    Risk Level: {riskLevel}
                 </div>
             </div>
 
-            {/* Emergency Banner */}
+            {/* Emergency Mode Banner */}
             {survival.isEmergency && (
-                <div className="rounded-xl border-2 border-red-500/30 bg-red-500/5 p-4 flex items-start gap-3">
-                    <Zap className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-start gap-3">
+                    <Zap className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
                     <div>
-                        <h3 className="font-bold text-red-500 text-sm">
-                            🚨 Emergency Mode Active
-                        </h3>
-                        <p className="text-xs text-red-400 mt-1">
-                            Your EMI exceeds salary or balance is negative. Cut
-                            all non-essential spending immediately.
+                        <h3 className="font-bold text-rose-300 text-sm">Emergency Budget Mode Active</h3>
+                        <p className="text-xs text-rose-300/80 mt-1">
+                            Your monthly debt liabilities exceed your salary or projected cash balance is negative.
+                            Prioritize high-interest loans and restrict discretionary spending immediately.
                         </p>
                     </div>
                 </div>
             )}
 
-            {/* Top Stats */}
+            {/* Top Stat Cards */}
             <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-                <Card className="glassmorphism py-4">
-                    <CardContent className="p-0 px-4">
-                        <p className="text-[11px] text-muted-foreground font-medium">
-                            Total Debt
-                        </p>
-                        <p className="text-lg font-bold text-red-500">
-                            ₹{totalDebt.toLocaleString()}
-                        </p>
-                    </CardContent>
+                <Card className="glassmorphism p-4">
+                    <p className="text-[11px] text-slate-400 font-medium">Total Outstanding Debt</p>
+                    <p className="text-lg font-bold text-rose-400 font-mono mt-1">
+                        ₹{totalDebt.toLocaleString()}
+                    </p>
                 </Card>
-                <Card className="glassmorphism py-4">
-                    <CardContent className="p-0 px-4">
-                        <p className="text-[11px] text-muted-foreground font-medium">
-                            Debt-Free In
-                        </p>
-                        <p className="text-lg font-bold text-emerald-500">
-                            {maxMonths > 0 ? `${maxMonths} mo` : "Now!"}
-                        </p>
-                    </CardContent>
+                <Card className="glassmorphism p-4">
+                    <p className="text-[11px] text-slate-400 font-medium">Debt-Free Horizon</p>
+                    <p className="text-lg font-bold text-emerald-400 font-mono mt-1">
+                        {maxMonths > 0 ? `${maxMonths} Months` : "Debt-Free! 🎉"}
+                    </p>
                 </Card>
-                <Card className="glassmorphism py-4">
-                    <CardContent className="p-0 px-4">
-                        <p className="text-[11px] text-muted-foreground font-medium">
-                            Health Score
-                        </p>
-                        <p
-                            className={`text-lg font-bold ${healthScore.total >= 60 ? "text-emerald-500" : healthScore.total >= 40 ? "text-amber-500" : "text-red-500"}`}
-                        >
-                            {healthScore.total}/100
-                        </p>
-                    </CardContent>
+                <Card className="glassmorphism p-4">
+                    <p className="text-[11px] text-slate-400 font-medium">Financial Health</p>
+                    <p className="text-lg font-bold text-indigo-400 font-mono mt-1">
+                        {healthScore.total}/100
+                    </p>
                 </Card>
-                <Card className="glassmorphism py-4">
-                    <CardContent className="p-0 px-4">
-                        <p className="text-[11px] text-muted-foreground font-medium">
-                            Daily Limit
-                        </p>
-                        <p className="text-lg font-bold text-blue-500">
-                            ₹{survival.dailyLimit.toLocaleString()}
-                        </p>
-                    </CardContent>
+                <Card className="glassmorphism p-4">
+                    <p className="text-[11px] text-slate-400 font-medium">Safe Daily Spend Limit</p>
+                    <p className="text-lg font-bold text-cyan-400 font-mono mt-1">
+                        ₹{survival.dailyLimit.toLocaleString()}
+                    </p>
                 </Card>
-                <Card className="glassmorphism py-4 col-span-2 lg:col-span-1">
-                    <CardContent className="p-0 px-4">
-                        <p className="text-[11px] text-muted-foreground font-medium">
-                            Survival
-                        </p>
-                        <p
-                            className={`text-lg font-bold ${survival.survivalScore > 50 ? "text-emerald-500" : "text-red-500"}`}
-                        >
-                            {survival.survivalScore}%
-                        </p>
-                    </CardContent>
+                <Card className="glassmorphism p-4 col-span-2 lg:col-span-1">
+                    <p className="text-[11px] text-slate-400 font-medium">Month Survival Index</p>
+                    <p
+                        className={`text-lg font-bold font-mono mt-1 ${
+                            survival.survivalScore > 50 ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                    >
+                        {survival.survivalScore}%
+                    </p>
                 </Card>
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex gap-1 p-1 rounded-lg bg-muted/50 overflow-x-auto">
+            <div className="flex gap-1.5 p-1 rounded-xl bg-slate-900/80 border border-white/[0.08] overflow-x-auto">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap ${activeTab === tab.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                            activeTab === tab.id
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                        }`}
                     >
                         <tab.icon className="h-3.5 w-3.5" />
                         {tab.label}
@@ -328,394 +227,273 @@ export default function PredictorPage() {
                 ))}
             </div>
 
-            {/* OVERVIEW TAB */}
+            {/* TAB: OVERVIEW */}
             {activeTab === "overview" && (
                 <div className="space-y-6">
-                    {/* AI Deep Analysis */}
                     <AIAnalysisCard
-                        title="AI Recovery Plan"
-                        description="Get a personalized debt recovery strategy from AI based on your real data"
-                        buttonLabel="Generate My Recovery Plan"
+                        title="AI Personalized Debt Recovery Plan"
+                        description="Generate an end-to-end debt reduction strategy based on your exact loan numbers"
+                        buttonLabel="Generate Recovery Strategy"
                         cacheKey="recovery-plan"
                         autoGenerate
-                        prompt="Analyze my complete financial situation and create a detailed, step-by-step debt recovery plan. Include: 1) Which specific loan to attack first and why, 2) Exactly how much extra I should pay monthly, 3) My realistic debt-free timeline, 4) Top 3 spending cuts with rupee amounts, 5) An emergency fund target. Be specific with my actual numbers and end with an encouraging note."
+                        prompt="Analyze my complete financial situation and create a step-by-step debt recovery plan. Include: 1) Which specific loan to pay off first and why, 2) Exactly how much extra monthly prepayment to allocate, 3) My realistic debt-free timeline, 4) Top 3 spending categories to trim with exact rupee amounts. Be specific with my actual numbers."
                     />
 
-                    {/* AI Insights */}
-                    <Card className="glassmorphism">
-                        <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <Brain className="h-5 w-5 text-violet-500" />
-                                <CardTitle>AI Financial Insights</CardTitle>
-                            </div>
+                    {/* AI Insights Grid */}
+                    <Card className="glassmorphism border-white/[0.08]">
+                        <CardHeader className="p-5 pb-3">
+                            <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-indigo-400" />
+                                Smart Financial Insights
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-5 pt-0">
                             {insights.length > 0 ? (
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     {insights.map((tip, i) => (
                                         <div
                                             key={i}
-                                            className={`rounded-lg border p-3 ${tip.type === "success" ? "border-emerald-500/20 bg-emerald-500/5" : tip.type === "danger" ? "border-red-500/20 bg-red-500/5" : tip.type === "warning" ? "border-amber-500/20 bg-amber-500/5" : "border-blue-500/20 bg-blue-500/5"}`}
+                                            className={`rounded-xl border p-3.5 ${
+                                                tip.type === "success"
+                                                    ? "border-emerald-500/25 bg-emerald-500/5 text-slate-200"
+                                                    : tip.type === "danger"
+                                                      ? "border-rose-500/25 bg-rose-500/5 text-slate-200"
+                                                      : tip.type === "warning"
+                                                        ? "border-amber-500/25 bg-amber-500/5 text-slate-200"
+                                                        : "border-indigo-500/25 bg-indigo-500/5 text-slate-200"
+                                            }`}
                                         >
-                                            <h4 className="text-xs font-bold mb-1">
-                                                {tip.title}
-                                            </h4>
-                                            <p className="text-[11px] text-muted-foreground leading-relaxed">
-                                                {tip.text}
-                                            </p>
+                                            <h4 className="text-xs font-bold text-white mb-1">{tip.title}</h4>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed">{tip.text}</p>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-sm text-muted-foreground text-center py-6">
-                                    Add salary and EMIs to get AI insights.
+                                <p className="text-xs text-slate-500 text-center py-6">
+                                    Add your salary and EMIs to generate automated AI recovery insights.
                                 </p>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* Health Score Breakdown */}
-                    <Card className="glassmorphism">
-                        <CardHeader>
-                            <CardTitle>Financial Health Breakdown</CardTitle>
-                            <CardDescription>
-                                {healthScore.category} — Score:{" "}
-                                {healthScore.total}/100
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {[
-                                    {
-                                        label: "Savings Ratio",
-                                        score: healthScore.savingsRatio.score,
-                                        max: 25,
-                                        value: `${healthScore.savingsRatio.value}%`,
-                                    },
-                                    {
-                                        label: "EMI Burden",
-                                        score: healthScore.emiRatio.score,
-                                        max: 25,
-                                        value: `${healthScore.emiRatio.value}%`,
-                                    },
-                                    {
-                                        label: "Expense Control",
-                                        score: healthScore.expenseStability
-                                            .score,
-                                        max: 20,
-                                        value: `${healthScore.expenseStability.value}%`,
-                                    },
-                                    {
-                                        label: "Debt Level",
-                                        score: healthScore.debtLevel.score,
-                                        max: 15,
-                                        value: `${healthScore.debtLevel.value}%`,
-                                    },
-                                    {
-                                        label: "Emergency Fund",
-                                        score: healthScore.emergencyFund.score,
-                                        max: 15,
-                                        value: `${healthScore.emergencyFund.value}%`,
-                                    },
-                                ].map((item, i) => (
-                                    <div
-                                        key={i}
-                                        className="flex items-center gap-3"
-                                    >
-                                        <span className="text-xs text-muted-foreground w-28 shrink-0">
-                                            {item.label}
-                                        </span>
-                                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all"
-                                                style={{
-                                                    width: `${(item.score / item.max) * 100}%`,
-                                                }}
-                                            />
-                                        </div>
-                                        <span className="text-xs font-mono w-12 text-right">
-                                            {item.score}/{item.max}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-
                     {/* EMI Pressure Ranking */}
                     {emiPressure.length > 0 && (
-                        <Card className="glassmorphism">
-                            <CardHeader>
-                                <CardTitle>EMI Pressure Ranking</CardTitle>
-                                <CardDescription>
-                                    Loans ranked by financial strain
+                        <Card className="glassmorphism border-white/[0.08]">
+                            <CardHeader className="p-5 pb-3">
+                                <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                                    <CreditCard className="h-4 w-4 text-rose-400" />
+                                    Loan Pressure Index
+                                </CardTitle>
+                                <CardDescription className="text-xs text-slate-400">
+                                    Loans ranked by interest impact and salary burden
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    {emiPressure.map((emi, i) => (
-                                        <div
-                                            key={emi.id}
-                                            className="flex items-center gap-3 p-2.5 rounded-lg border bg-card/50"
+                            <CardContent className="p-5 pt-0 space-y-2">
+                                {emiPressure.map((emi, idx) => (
+                                    <div
+                                        key={emi.id}
+                                        className="flex items-center gap-3 p-3 rounded-xl border border-white/[0.06] bg-slate-900/40"
+                                    >
+                                        <span
+                                            className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
+                                                idx === 0
+                                                    ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                                                    : "bg-slate-800 text-slate-400"
+                                            }`}
                                         >
-                                            <span
-                                                className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${i === 0 ? "bg-red-500/20 text-red-500" : "bg-muted text-muted-foreground"}`}
-                                            >
-                                                {i + 1}
-                                            </span>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">
-                                                    {emi.title}
-                                                </p>
-                                                <p className="text-[11px] text-muted-foreground">
-                                                    ₹
-                                                    {emi.emiAmount.toLocaleString()}
-                                                    /mo · {emi.interestRate}% ·{" "}
-                                                    {emi.remainingMonths}mo left
-                                                </p>
-                                            </div>
-                                            <div className="text-right">
-                                                <p
-                                                    className={`text-xs font-bold ${emi.pressureIndex > 60 ? "text-red-500" : emi.pressureIndex > 40 ? "text-amber-500" : "text-emerald-500"}`}
-                                                >
-                                                    {emi.pressureIndex}/100
-                                                </p>
-                                            </div>
+                                            {idx + 1}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold text-white truncate">{emi.title}</p>
+                                            <p className="text-[11px] text-slate-400 font-mono">
+                                                ₹{emi.emiAmount.toLocaleString()}/mo · {emi.interestRate}% interest ·{" "}
+                                                {emi.remainingMonths} months left
+                                            </p>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="text-right">
+                                            <span
+                                                className={`text-xs font-bold font-mono ${
+                                                    emi.pressureIndex > 60
+                                                        ? "text-rose-400"
+                                                        : emi.pressureIndex > 40
+                                                          ? "text-amber-400"
+                                                          : "text-emerald-400"
+                                                }`}
+                                            >
+                                                Pressure {emi.pressureIndex}/100
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
                             </CardContent>
                         </Card>
                     )}
                 </div>
             )}
 
-            {/* STRATEGY TAB */}
+            {/* TAB: STRATEGY */}
             {activeTab === "strategy" && (
                 <div className="space-y-6">
-                    {/* AI Strategy Advisor */}
-                    <AIAnalysisCard
-                        title="AI Strategy Advisor"
-                        description="Get AI guidance on the best repayment strategy for your loans"
-                        buttonLabel="Get Strategy Advice"
-                        cacheKey="strategy-advisor"
-                        autoGenerate
-                        prompt="Compare the Snowball and Avalanche debt repayment strategies for MY specific loans. Tell me: 1) Which strategy is best for my situation and exactly why, 2) The exact order I should pay off my loans, 3) How much total interest I'll save with the better method, 4) A realistic monthly extra payment I can afford, 5) Whether psychological motivation (Snowball) or pure savings (Avalanche) matters more for me. Use my actual loan names, amounts, and interest rates."
-                    />
+                    {/* Interactive Prepayment Input */}
+                    <Card className="glassmorphism border-indigo-500/30 bg-indigo-950/20 p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                    <Target className="h-4 w-4 text-indigo-400" />
+                                    Extra Monthly Debt Prepayment Simulator
+                                </h4>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                    Simulate how extra prepayments accelerate your debt-free milestone.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Label className="text-xs text-slate-300 whitespace-nowrap">Extra (₹/mo):</Label>
+                                <Input
+                                    type="number"
+                                    placeholder="2000"
+                                    value={extraPayment || ""}
+                                    onChange={(e) => setExtraPayment(Number(e.target.value))}
+                                    className="w-28 h-8 text-xs font-mono font-bold bg-slate-900 border-white/10 text-white"
+                                />
+                            </div>
+                        </div>
+                    </Card>
+
                     {activeEmis.length >= 2 ? (
                         <>
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <Card className="glassmorphism border-blue-500/20">
-                                    <CardHeader>
-                                        <CardTitle className="text-blue-500 flex items-center gap-2">
-                                            <Flame className="h-4 w-4" />{" "}
-                                            Avalanche Method
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Pay highest interest first — saves
-                                            most money
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">
-                                                Total Interest
-                                            </span>
-                                            <span className="font-bold">
-                                                ₹
-                                                {avalanche.totalInterestPaid.toLocaleString()}
+                                {/* Avalanche Card */}
+                                <Card className="glassmorphism border-blue-500/30 p-5">
+                                    <div className="flex items-center gap-2 text-blue-400 font-bold text-sm mb-1">
+                                        <Flame className="h-4 w-4" /> Avalanche Method (Highest Interest First)
+                                    </div>
+                                    <p className="text-xs text-slate-400 mb-4">
+                                        Mathematically optimal — saves the maximum interest money.
+                                    </p>
+
+                                    <div className="space-y-2 border-t border-white/[0.06] pt-3">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400">Total Interest Payable</span>
+                                            <span className="font-mono font-bold text-white">
+                                                ₹{avalanche.totalInterestPaid.toLocaleString()}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">
-                                                Months to Freedom
-                                            </span>
-                                            <span className="font-bold">
-                                                {avalanche.totalMonths}
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400">Months to Zero Debt</span>
+                                            <span className="font-mono font-bold text-emerald-400">
+                                                {avalanche.totalMonths} Months
                                             </span>
                                         </div>
-                                        <div className="mt-3 space-y-1">
-                                            {avalanche.payoffOrder.map(
-                                                (p, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="flex items-center gap-2 text-xs"
-                                                    >
-                                                        <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-[10px] font-bold">
-                                                            {i + 1}
-                                                        </span>
-                                                        <span className="text-muted-foreground">
-                                                            {p.title}
-                                                        </span>
-                                                        <span className="ml-auto font-mono">
-                                                            Mo {p.paidOffMonth}
-                                                        </span>
-                                                    </div>
-                                                ),
-                                            )}
-                                        </div>
-                                    </CardContent>
+                                    </div>
+
+                                    <div className="mt-4 pt-3 border-t border-white/[0.06] space-y-1.5">
+                                        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                                            Payoff Priority Sequence
+                                        </span>
+                                        {avalanche.payoffOrder.map((p, i) => (
+                                            <div key={i} className="flex items-center justify-between text-xs">
+                                                <span className="text-slate-300">
+                                                    {i + 1}. {p.title}
+                                                </span>
+                                                <span className="text-indigo-400 font-mono font-semibold">
+                                                    Cleared in Month {p.paidOffMonth}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </Card>
-                                <Card className="glassmorphism border-violet-500/20">
-                                    <CardHeader>
-                                        <CardTitle className="text-violet-500 flex items-center gap-2">
-                                            <Heart className="h-4 w-4" />{" "}
-                                            Snowball Method
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Pay smallest balance first — builds
-                                            momentum
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">
-                                                Total Interest
-                                            </span>
-                                            <span className="font-bold">
-                                                ₹
-                                                {snowball.totalInterestPaid.toLocaleString()}
+
+                                {/* Snowball Card */}
+                                <Card className="glassmorphism border-violet-500/30 p-5">
+                                    <div className="flex items-center gap-2 text-violet-400 font-bold text-sm mb-1">
+                                        <Heart className="h-4 w-4" /> Snowball Method (Smallest Balance First)
+                                    </div>
+                                    <p className="text-xs text-slate-400 mb-4">
+                                        Psychological wins — eliminates loans quickly for momentum.
+                                    </p>
+
+                                    <div className="space-y-2 border-t border-white/[0.06] pt-3">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400">Total Interest Payable</span>
+                                            <span className="font-mono font-bold text-white">
+                                                ₹{snowball.totalInterestPaid.toLocaleString()}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">
-                                                Months to Freedom
-                                            </span>
-                                            <span className="font-bold">
-                                                {snowball.totalMonths}
+                                        <div className="flex justify-between text-xs">
+                                            <span className="text-slate-400">Months to Zero Debt</span>
+                                            <span className="font-mono font-bold text-violet-300">
+                                                {snowball.totalMonths} Months
                                             </span>
                                         </div>
-                                        <div className="mt-3 space-y-1">
-                                            {snowball.payoffOrder.map(
-                                                (p, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="flex items-center gap-2 text-xs"
-                                                    >
-                                                        <span className="w-4 h-4 rounded-full bg-violet-500/20 text-violet-500 flex items-center justify-center text-[10px] font-bold">
-                                                            {i + 1}
-                                                        </span>
-                                                        <span className="text-muted-foreground">
-                                                            {p.title}
-                                                        </span>
-                                                        <span className="ml-auto font-mono">
-                                                            Mo {p.paidOffMonth}
-                                                        </span>
-                                                    </div>
-                                                ),
-                                            )}
-                                        </div>
-                                    </CardContent>
+                                    </div>
+
+                                    <div className="mt-4 pt-3 border-t border-white/[0.06] space-y-1.5">
+                                        <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                                            Payoff Priority Sequence
+                                        </span>
+                                        {snowball.payoffOrder.map((p, i) => (
+                                            <div key={i} className="flex items-center justify-between text-xs">
+                                                <span className="text-slate-300">
+                                                    {i + 1}. {p.title}
+                                                </span>
+                                                <span className="text-violet-400 font-mono font-semibold">
+                                                    Cleared in Month {p.paidOffMonth}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </Card>
                             </div>
-                            {/* Recommendation */}
-                            <Card className="glassmorphism border-emerald-500/20 bg-emerald-500/5">
-                                <CardContent className="py-4 flex items-center gap-3">
-                                    <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                                            Recommended:{" "}
-                                            {avalanche.totalInterestPaid <=
-                                            snowball.totalInterestPaid
-                                                ? "Avalanche"
-                                                : "Snowball"}{" "}
-                                            Method
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Saves ₹
-                                            {Math.abs(
-                                                avalanche.totalInterestPaid -
-                                                    snowball.totalInterestPaid,
-                                            ).toLocaleString()}{" "}
-                                            in interest
-                                            {avalanche.totalMonths !==
-                                                snowball.totalMonths &&
-                                                ` and ${Math.abs(avalanche.totalMonths - snowball.totalMonths)} months`}
-                                            .
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            {/* Strategy Chart */}
+
+                            {/* Strategy Paydown Chart */}
                             {mounted && (
-                                <Card className="glassmorphism">
-                                    <CardHeader>
-                                        <CardTitle>
-                                            Strategy Comparison Timeline
+                                <Card className="glassmorphism border-white/[0.08] p-5">
+                                    <CardHeader className="p-0 pb-4">
+                                        <CardTitle className="text-base font-bold text-white">
+                                            Debt Paydown Trajectory Comparison
                                         </CardTitle>
+                                        <CardDescription className="text-xs text-slate-400">
+                                            Comparing total debt balance curve between Avalanche and Snowball
+                                        </CardDescription>
                                     </CardHeader>
-                                    <CardContent className="h-[300px] min-h-[300px]">
-                                        <ResponsiveContainer
-                                            width="100%"
-                                            height="100%"
-                                        >
-                                            <LineChart
-                                                data={strategyChartData}
-                                                margin={{
-                                                    top: 10,
-                                                    right: 10,
-                                                    bottom: 10,
-                                                    left: 0,
-                                                }}
-                                            >
-                                                <CartesianGrid
-                                                    strokeDasharray="3 3"
-                                                    vertical={false}
-                                                    stroke="hsl(var(--muted))"
-                                                />
-                                                <XAxis
-                                                    dataKey="month"
-                                                    stroke="hsl(var(--muted-foreground))"
-                                                    fontSize={11}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    label={{
-                                                        value: "Months",
-                                                        position: "bottom",
-                                                        fontSize: 10,
-                                                    }}
-                                                />
+                                    <CardContent className="p-0 h-[280px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={strategyChartData}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                                <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                                                 <YAxis
-                                                    stroke="hsl(var(--muted-foreground))"
+                                                    stroke="#94a3b8"
                                                     fontSize={11}
                                                     tickLine={false}
                                                     axisLine={false}
-                                                    tickFormatter={(v) =>
-                                                        `₹${(v / 1000).toFixed(0)}k`
-                                                    }
+                                                    tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
                                                 />
                                                 <Tooltip
                                                     contentStyle={{
-                                                        backgroundColor:
-                                                            "hsl(var(--card))",
-                                                        border: "1px solid hsl(var(--border))",
-                                                        borderRadius: "8px",
+                                                        backgroundColor: "#0f172a",
+                                                        border: "1px solid rgba(255,255,255,0.1)",
+                                                        borderRadius: "12px",
+                                                        color: "#ffffff",
                                                     }}
-                                                    formatter={(v: any) =>
-                                                        `₹${Number(v).toLocaleString()}`
-                                                    }
+                                                    formatter={(v: any) => [`₹${Number(v).toLocaleString()}`, "Balance"]}
                                                 />
-                                                <Legend
-                                                    verticalAlign="bottom"
-                                                    height={36}
-                                                    iconType="circle"
-                                                />
+                                                <Legend verticalAlign="bottom" height={36} />
                                                 <Line
-                                                    name="Avalanche"
+                                                    name="Avalanche Method"
                                                     type="monotone"
                                                     dataKey="avalanche"
-                                                    stroke="#3b82f6"
+                                                    stroke="#38bdf8"
                                                     strokeWidth={2.5}
                                                     dot={false}
                                                 />
                                                 <Line
-                                                    name="Snowball"
+                                                    name="Snowball Method"
                                                     type="monotone"
                                                     dataKey="snowball"
-                                                    stroke="#8b5cf6"
+                                                    stroke="#a855f7"
                                                     strokeWidth={2.5}
                                                     dot={false}
-                                                    strokeDasharray="6 4"
+                                                    strokeDasharray="5 5"
                                                 />
                                             </LineChart>
                                         </ResponsiveContainer>
@@ -724,277 +502,114 @@ export default function PredictorPage() {
                             )}
                         </>
                     ) : (
-                        <Card className="glassmorphism">
-                            <CardContent className="py-12 text-center text-muted-foreground text-sm">
-                                Add at least 2 active EMIs to compare repayment
-                                strategies.
-                            </CardContent>
+                        <Card className="glassmorphism p-10 text-center text-slate-500 text-xs">
+                            Add at least 2 active loans in EMI Manager to compare payoff strategies.
                         </Card>
                     )}
                 </div>
             )}
 
-            {/* FORECAST TAB */}
+            {/* TAB: FORECAST */}
             {activeTab === "forecast" && (
                 <div className="space-y-6">
-                    {/* AI Forecast Analyst */}
-                    <AIAnalysisCard
-                        title="AI Forecast Analyst"
-                        description="AI predicts your financial future and flags risks ahead"
-                        buttonLabel="Analyze My Future"
-                        cacheKey="forecast-analyst"
-                        autoGenerate
-                        prompt="Based on my current finances, forecast my financial situation over the next 12 months. Tell me: 1) What my savings will look like in 6 and 12 months if nothing changes, 2) Which month my finances improve significantly (when an EMI ends), 3) Any month where I might face a cash crunch, 4) My projected net worth growth, 5) Two specific actions to improve my 12-month outlook. Use my actual numbers and be realistic."
-                    />
                     {mounted && forecast.length > 0 && salary > 0 ? (
-                        <>
-                            <Card className="glassmorphism">
-                                <CardHeader>
-                                    <CardTitle>
-                                        12-Month Financial Forecast
-                                    </CardTitle>
-                                    <CardDescription>
-                                        Projected balance, savings growth, and
-                                        debt reduction
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="h-[350px] min-h-[350px]">
-                                    <ResponsiveContainer
-                                        width="100%"
-                                        height="100%"
-                                    >
-                                        <AreaChart
-                                            data={forecast}
-                                            margin={{
-                                                top: 10,
-                                                right: 10,
-                                                bottom: 10,
-                                                left: 0,
+                        <Card className="glassmorphism border-white/[0.08] p-5">
+                            <CardHeader className="p-0 pb-4">
+                                <CardTitle className="text-base font-bold text-white">
+                                    12-Month Financial Horizon Simulation
+                                </CardTitle>
+                                <CardDescription className="text-xs text-slate-400">
+                                    Projected savings growth vs outstanding debt amortization
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0 h-[320px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={forecast}>
+                                        <defs>
+                                            <linearGradient id="savGrad" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="debtGrad" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
+                                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                                        <YAxis
+                                            stroke="#94a3b8"
+                                            fontSize={11}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{
+                                                backgroundColor: "#0f172a",
+                                                border: "1px solid rgba(255,255,255,0.1)",
+                                                borderRadius: "12px",
+                                                color: "#ffffff",
                                             }}
-                                        >
-                                            <defs>
-                                                <linearGradient
-                                                    id="savGrad"
-                                                    x1="0"
-                                                    y1="0"
-                                                    x2="0"
-                                                    y2="1"
-                                                >
-                                                    <stop
-                                                        offset="5%"
-                                                        stopColor="#10b981"
-                                                        stopOpacity={0.3}
-                                                    />
-                                                    <stop
-                                                        offset="95%"
-                                                        stopColor="#10b981"
-                                                        stopOpacity={0}
-                                                    />
-                                                </linearGradient>
-                                                <linearGradient
-                                                    id="debtGrad"
-                                                    x1="0"
-                                                    y1="0"
-                                                    x2="0"
-                                                    y2="1"
-                                                >
-                                                    <stop
-                                                        offset="5%"
-                                                        stopColor="#ef4444"
-                                                        stopOpacity={0.3}
-                                                    />
-                                                    <stop
-                                                        offset="95%"
-                                                        stopColor="#ef4444"
-                                                        stopOpacity={0}
-                                                    />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid
-                                                strokeDasharray="3 3"
-                                                vertical={false}
-                                                stroke="hsl(var(--muted))"
-                                            />
-                                            <XAxis
-                                                dataKey="month"
-                                                stroke="hsl(var(--muted-foreground))"
-                                                fontSize={11}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <YAxis
-                                                stroke="hsl(var(--muted-foreground))"
-                                                fontSize={11}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                tickFormatter={(v) =>
-                                                    `₹${(v / 1000).toFixed(0)}k`
-                                                }
-                                            />
-                                            <Tooltip
-                                                contentStyle={{
-                                                    backgroundColor:
-                                                        "hsl(var(--card))",
-                                                    border: "1px solid hsl(var(--border))",
-                                                    borderRadius: "8px",
-                                                }}
-                                                formatter={(v: any) =>
-                                                    `₹${Number(v).toLocaleString()}`
-                                                }
-                                            />
-                                            <Legend
-                                                verticalAlign="bottom"
-                                                height={36}
-                                                iconType="circle"
-                                            />
-                                            <Area
-                                                name="Cumulative Savings"
-                                                type="monotone"
-                                                dataKey="savings"
-                                                stroke="#10b981"
-                                                strokeWidth={2}
-                                                fill="url(#savGrad)"
-                                            />
-                                            <Area
-                                                name="Remaining Debt"
-                                                type="monotone"
-                                                dataKey="debt"
-                                                stroke="#ef4444"
-                                                strokeWidth={2}
-                                                fill="url(#debtGrad)"
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </CardContent>
-                            </Card>
-                            <Card className="glassmorphism">
-                                <CardHeader>
-                                    <CardTitle>
-                                        Monthly Net Balance Forecast
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="h-[250px] min-h-[250px]">
-                                    <ResponsiveContainer
-                                        width="100%"
-                                        height="100%"
-                                    >
-                                        <BarChart
-                                            data={forecast}
-                                            margin={{
-                                                top: 10,
-                                                right: 10,
-                                                bottom: 10,
-                                                left: 0,
-                                            }}
-                                        >
-                                            <CartesianGrid
-                                                strokeDasharray="3 3"
-                                                vertical={false}
-                                                stroke="hsl(var(--muted))"
-                                            />
-                                            <XAxis
-                                                dataKey="month"
-                                                stroke="hsl(var(--muted-foreground))"
-                                                fontSize={11}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <YAxis
-                                                stroke="hsl(var(--muted-foreground))"
-                                                fontSize={11}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                tickFormatter={(v) =>
-                                                    `₹${(v / 1000).toFixed(0)}k`
-                                                }
-                                            />
-                                            <Tooltip
-                                                contentStyle={{
-                                                    backgroundColor:
-                                                        "hsl(var(--card))",
-                                                    border: "1px solid hsl(var(--border))",
-                                                    borderRadius: "8px",
-                                                }}
-                                                formatter={(v: any) =>
-                                                    `₹${Number(v).toLocaleString()}`
-                                                }
-                                            />
-                                            <Bar
-                                                name="Monthly Balance"
-                                                dataKey="balance"
-                                                fill="#6366f1"
-                                                radius={[4, 4, 0, 0]}
-                                            />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </CardContent>
-                            </Card>
-                        </>
-                    ) : (
-                        <Card className="glassmorphism">
-                            <CardContent className="py-12 text-center text-muted-foreground text-sm">
-                                Set your salary in Settings to see 12-month
-                                forecasts.
+                                            formatter={(v: any) => [`₹${Number(v).toLocaleString()}`]}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                        <Area
+                                            name="Cumulative Savings"
+                                            type="monotone"
+                                            dataKey="savings"
+                                            stroke="#10b981"
+                                            fill="url(#savGrad)"
+                                            strokeWidth={2}
+                                        />
+                                        <Area
+                                            name="Remaining Debt"
+                                            type="monotone"
+                                            dataKey="debt"
+                                            stroke="#f43f5e"
+                                            fill="url(#debtGrad)"
+                                            strokeWidth={2}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
                             </CardContent>
+                        </Card>
+                    ) : (
+                        <Card className="glassmorphism p-10 text-center text-slate-500 text-xs">
+                            Add your salary to visualize 12-month projections.
                         </Card>
                     )}
                 </div>
             )}
 
-            {/* WARNINGS TAB */}
+            {/* TAB: WARNINGS */}
             {activeTab === "warnings" && (
                 <div className="space-y-4">
-                    {/* AI Risk Prevention Coach */}
-                    <AIAnalysisCard
-                        title="AI Risk Prevention Coach"
-                        description="AI predicts upcoming financial risks and how to prevent them"
-                        buttonLabel="Predict My Risks"
-                        cacheKey="risk-prevention"
-                        autoGenerate
-                        prompt="Act as my early-warning financial risk coach. Analyze my data and predict: 1) Any EMI I might struggle to pay in the next 30 days and why, 2) Whether I'm at risk of running out of cash before month-end, 3) Signs of financial burnout or overspending in my patterns, 4) My single biggest financial danger right now, 5) Three specific preventive actions to take THIS WEEK. Be direct and protective, using my actual numbers."
-                    />
                     {warnings.length > 0 ? (
                         warnings.map((w) => (
-                            <Card
+                            <div
                                 key={w.id}
-                                className={`glassmorphism ${w.severity === "Critical" ? "border-red-500/30" : w.severity === "High" ? "border-orange-500/20" : "border-amber-500/20"}`}
+                                className={`rounded-2xl border p-4 flex items-start gap-3.5 ${
+                                    w.severity === "Critical"
+                                        ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
+                                        : w.severity === "High"
+                                          ? "border-orange-500/30 bg-orange-500/10 text-orange-200"
+                                          : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                                }`}
                             >
-                                <CardContent className="py-4 flex items-start gap-3">
-                                    <div
-                                        className={`p-2 rounded-lg shrink-0 ${w.severity === "Critical" ? "bg-red-500/10 text-red-500" : w.severity === "High" ? "bg-orange-500/10 text-orange-500" : "bg-amber-500/10 text-amber-500"}`}
-                                    >
-                                        <AlertTriangle className="h-4 w-4" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-sm font-bold">
-                                                {w.title}
-                                            </h4>
-                                            <span
-                                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${w.severity === "Critical" ? "bg-red-500/20 text-red-500" : w.severity === "High" ? "bg-orange-500/20 text-orange-500" : "bg-amber-500/20 text-amber-500"}`}
-                                            >
-                                                {w.severity}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            {w.message}
-                                        </p>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                                <div>
+                                    <h4 className="font-bold text-sm text-white">{w.title}</h4>
+                                    <p className="text-xs opacity-90 mt-0.5 leading-relaxed">{w.message}</p>
+                                </div>
+                            </div>
                         ))
                     ) : (
-                        <Card className="glassmorphism border-emerald-500/20">
-                            <CardContent className="py-12 text-center">
-                                <ShieldCheck className="h-10 w-10 mx-auto mb-3 text-emerald-500/50" />
-                                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                                    All Clear!
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    No financial warnings detected. Keep it up!
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <div className="py-16 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl glassmorphism">
+                            <ShieldCheck className="h-10 w-10 mx-auto mb-2 text-emerald-400" />
+                            <p className="text-sm font-semibold text-slate-300">No Critical Warnings Detected</p>
+                            <p className="text-xs text-slate-500 mt-1">Your debt-to-income and cash flow ratios are healthy.</p>
+                        </div>
                     )}
                 </div>
             )}

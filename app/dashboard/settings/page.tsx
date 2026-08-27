@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trash2, Save } from "lucide-react";
+import { Trash2, Save, User, Settings, ShieldAlert, Sparkles } from "lucide-react";
 
 export default function SettingsPage() {
     const { user, updateUser, clearAllData } = useStore();
@@ -30,7 +30,6 @@ export default function SettingsPage() {
     const [salary, setSalary] = useState(0);
     const [hasInitialized, setHasInitialized] = useState(false);
 
-    // Avoid hydration issues by populating state once user is loaded
     useEffect(() => {
         if (user && !hasInitialized) {
             setName(user.name || "");
@@ -42,13 +41,13 @@ export default function SettingsPage() {
 
     const handleSave = () => {
         updateUser(name, email, Number(salary));
-        toast.success("Settings saved successfully!");
+        toast.success("Profile details saved successfully!");
     };
 
     const handleClear = () => {
         if (
             confirm(
-                "Are you sure you want to clear all data? This will wipe all EMIs, expenses, goals, and reset your profile.",
+                "Are you sure you want to clear all data? This will wipe all EMIs, expenses, goals, and reset your ledger.",
             )
         ) {
             clearAllData();
@@ -59,99 +58,115 @@ export default function SettingsPage() {
     return (
         <div className="space-y-6 max-w-2xl mx-auto">
             <div>
-                <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-                <p className="text-muted-foreground">
-                    Manage your account settings and preferences.
+                <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                    <Settings className="h-6 w-6 text-indigo-400" />
+                    Account & Financial Preferences
+                </h2>
+                <p className="text-sm text-slate-400">
+                    Configure your net monthly income, profile credentials, and app preferences.
                 </p>
             </div>
 
-            <Card className="glassmorphism">
-                <CardHeader>
-                    <CardTitle>Profile Details</CardTitle>
-                    <CardDescription>
-                        Update your personal details and monthly salary.
+            {/* Profile & Salary Card */}
+            <Card className="glassmorphism border-white/[0.08]">
+                <CardHeader className="p-5 pb-3 border-b border-white/[0.06]">
+                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                        <User className="h-4 w-4 text-indigo-400" />
+                        Financial Profile
+                    </CardTitle>
+                    <CardDescription className="text-xs text-slate-400">
+                        Monthly salary is used across the dashboard and AI engines for ratios.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Full Name</Label>
+                <CardContent className="p-5 space-y-4">
+                    <div className="space-y-1.5">
+                        <Label htmlFor="name" className="text-xs text-slate-300">
+                            Full Name
+                        </Label>
                         <Input
                             id="name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
+                            className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-500"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="email" className="text-xs text-slate-300">
+                            Email Address
+                        </Label>
                         <Input
                             id="email"
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-500"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="salary">Monthly Salary (₹)</Label>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="salary" className="text-xs text-slate-300">
+                            Net Monthly Salary (₹)
+                        </Label>
                         <Input
                             id="salary"
                             type="number"
                             value={salary || ""}
                             onChange={(e) => setSalary(Number(e.target.value))}
+                            className="bg-slate-900/60 border-white/10 text-white placeholder:text-slate-500 font-mono font-bold text-base"
                         />
                     </div>
-                    <Button onClick={handleSave} className="w-full sm:w-auto">
-                        <Save className="mr-2 h-4 w-4" /> Save Changes
+                    <Button
+                        onClick={handleSave}
+                        className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs h-9 shadow-md shadow-indigo-600/20"
+                    >
+                        <Save className="mr-1.5 h-4 w-4" /> Save Profile Settings
                     </Button>
                 </CardContent>
             </Card>
 
-            <Card className="glassmorphism">
-                <CardHeader>
-                    <CardTitle>Preferences</CardTitle>
-                    <CardDescription>
-                        Customize your application experience.
-                    </CardDescription>
+            {/* Currency Preference */}
+            <Card className="glassmorphism border-white/[0.08]">
+                <CardHeader className="p-5 pb-3 border-b border-white/[0.06]">
+                    <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-violet-400" />
+                        Regional & Currency Preferences
+                    </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Currency</Label>
+                <CardContent className="p-5">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-slate-300">Display Currency</Label>
                         <Select defaultValue="INR">
-                            <SelectTrigger>
+                            <SelectTrigger className="bg-slate-900/60 border-white/10 text-white text-xs">
                                 <SelectValue placeholder="Select currency" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="INR">
-                                    ₹ INR (Indian Rupee)
-                                </SelectItem>
-                                <SelectItem value="USD">
-                                    $ USD (US Dollar)
-                                </SelectItem>
-                                <SelectItem value="EUR">
-                                    € EUR (Euro)
-                                </SelectItem>
+                            <SelectContent className="bg-slate-900 border-white/10 text-white text-xs">
+                                <SelectItem value="INR">₹ INR (Indian Rupee)</SelectItem>
+                                <SelectItem value="USD">$ USD (US Dollar)</SelectItem>
+                                <SelectItem value="EUR">€ EUR (Euro)</SelectItem>
+                                <SelectItem value="AED">AED (UAE Dirham)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </CardContent>
             </Card>
 
-            <Card className="border-destructive/30 bg-destructive/5 glassmorphism">
-                <CardHeader>
-                    <CardTitle className="text-destructive">
+            {/* Danger Zone */}
+            <Card className="border-rose-500/30 bg-rose-500/[0.04] glassmorphism">
+                <CardHeader className="p-5 pb-3">
+                    <CardTitle className="text-base font-bold text-rose-400 flex items-center gap-2">
+                        <ShieldAlert className="h-4 w-4" />
                         Danger Zone
                     </CardTitle>
-                    <CardDescription>
-                        Permanently clear your application data.
+                    <CardDescription className="text-xs text-rose-300/70">
+                        Permanently clear all local and cloud storage data.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-5 pt-0">
                     <Button
                         variant="destructive"
                         onClick={handleClear}
-                        className="w-full"
+                        className="w-full bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs h-9"
                     >
-                        <Trash2 className="mr-2 h-4 w-4" /> Clear All Data
-                        (Fresh Start)
+                        <Trash2 className="mr-1.5 h-4 w-4" /> Reset All Data (Fresh Start)
                     </Button>
                 </CardContent>
             </Card>

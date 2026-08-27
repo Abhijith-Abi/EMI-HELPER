@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const viewport: Viewport = {
-    themeColor: "#6366f1",
+    themeColor: "#080b11",
     width: "device-width",
     initialScale: 1,
     maximumScale: 1,
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     ),
     appleWebApp: {
         capable: true,
-        statusBarStyle: "default",
+        statusBarStyle: "black-translucent",
         title: "Cash ERP",
     },
     openGraph: {
@@ -61,15 +61,15 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="en" className="dark" suppressHydrationWarning>
             <body
-                className={`${inter.variable} font-sans min-h-screen flex flex-col antialiased overflow-x-hidden`}
+                className={`${inter.variable} font-sans min-h-screen flex flex-col antialiased overflow-x-hidden bg-background text-foreground`}
                 suppressHydrationWarning
             >
                 <ThemeProvider
                     attribute="class"
-                    defaultTheme="light"
-                    forcedTheme="light"
+                    defaultTheme="dark"
+                    enableSystem={false}
                     disableTransitionOnChange
                 >
                     <PWARegister />
@@ -79,6 +79,7 @@ export default function RootLayout({
                         expand
                         richColors
                         closeButton
+                        theme="dark"
                     />
                 </ThemeProvider>
             </body>

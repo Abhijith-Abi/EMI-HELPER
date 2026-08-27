@@ -16,6 +16,7 @@ interface DatePickerProps {
     onChange: (date: string) => void;
     placeholder?: string;
     id?: string;
+    className?: string;
 }
 
 export function DatePicker({
@@ -23,6 +24,7 @@ export function DatePicker({
     onChange,
     placeholder = "Pick a date",
     id,
+    className,
 }: DatePickerProps) {
     const selectedDate = value ? new Date(value + "T00:00:00") : undefined;
 
@@ -31,14 +33,20 @@ export function DatePicker({
             <PopoverTrigger
                 id={id}
                 className={cn(
-                    "flex h-9 w-full items-center rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors cursor-pointer hover:bg-accent hover:text-accent-foreground",
-                    !value && "text-muted-foreground",
+                    "flex h-10 w-full items-center justify-start rounded-xl border border-white/10 bg-slate-900/60 px-3.5 text-xs text-white shadow-sm transition-all cursor-pointer hover:bg-slate-800/80 hover:border-indigo-500/40 whitespace-nowrap overflow-hidden focus:outline-none focus:ring-1 focus:ring-indigo-500/50",
+                    !value && "text-slate-500",
+                    className,
                 )}
             >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP") : placeholder}
+                <CalendarIcon className="mr-2 h-4 w-4 shrink-0 text-indigo-400" />
+                <span className="truncate font-medium">
+                    {selectedDate ? format(selectedDate, "dd MMM yyyy") : placeholder}
+                </span>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent
+                className="w-auto p-2 bg-[#0c101d] border border-white/[0.12] rounded-2xl shadow-2xl z-50 text-white"
+                align="start"
+            >
                 <Calendar
                     mode="single"
                     selected={selectedDate}

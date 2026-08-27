@@ -9,6 +9,9 @@ import {
     Check,
     CheckCheck,
     Inbox,
+    Sparkles,
+    CreditCard,
+    Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,14 +20,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DeleteModal } from "@/components/ui/delete-modal";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/logo";
+import Link from "next/link";
 
 export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
-    const { user, notifications, markNotificationRead, deleteNotification } =
+    const { user, notifications, markNotificationRead, deleteNotification, payAllDueEmis } =
         useStore();
     const [showNotifications, setShowNotifications] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Proper Delete Modal controls inside Navbar
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [targetDeleteId, setTargetDeleteId] = useState("");
 
@@ -52,7 +55,7 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
               .join("")
               .substring(0, 2)
               .toUpperCase()
-        : "JD";
+        : "US";
 
     const handleMarkAllRead = () => {
         notifications.forEach((n) => {
@@ -71,200 +74,206 @@ export function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
         toast.success("Notification deleted.");
     };
 
+    const handleQuickPayDue = () => {
+        const count = payAllDueEmis(true);
+        if (count > 0) {
+            toast.success(`Successfully processed payment for ${count} due EMI${count > 1 ? "s" : ""}!`);
+        } else {
+            toast.info("No EMIs are currently due for payment.");
+        }
+    };
+
     return (
-        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-indigo-100/50 bg-white/60 backdrop-blur-xl px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-1.5 md:hidden">
+        <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center justify-between gap-x-4 border-b border-white/[0.08] bg-[#090d16]/80 backdrop-blur-xl px-4 sm:px-6 lg:px-8">
+            {/* Mobile logo & hamburger */}
+            <div className="flex items-center gap-2 md:hidden">
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="p-1 text-muted-foreground hover:text-foreground"
+                    className="p-1 text-slate-400 hover:text-white hover:bg-white/[0.06]"
                     onClick={onMenuClick}
                 >
                     <span className="sr-only">Open sidebar</span>
                     <Menu className="h-5 w-5" aria-hidden="true" />
                 </Button>
-                <div
-                    className="h-4 w-px bg-indigo-100/60 mx-1"
-                    aria-hidden="true"
-                />
+                <div className="h-4 w-px bg-white/[0.08] mx-1" aria-hidden="true" />
                 <Logo iconSize={26} />
             </div>
 
-            <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6 min-w-0">
-                <form
-                    className="relative flex flex-1 items-center min-w-0"
-                    action="#"
-                    method="GET"
-                >
-                    <label htmlFor="search-field" className="sr-only">
-                        Search
-                    </label>
-                    <Search
-                        className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-muted-foreground"
-                        aria-hidden="true"
-                    />
-                    <input
-                        id="search-field"
-                        className="block h-full w-full border-0 bg-transparent py-0 pl-8 pr-0 text-foreground placeholder:text-muted-foreground focus:ring-0 sm:text-sm outline-none"
-                        placeholder="Search transactions, EMIs..."
-                        type="search"
-                        name="search"
-                    />
-                </form>
-                <div className="flex items-center gap-x-4 lg:gap-x-6">
-                    {/* Notification Button and Popover */}
-                    <div className="relative" ref={dropdownRef}>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="relative h-9 w-9 text-muted-foreground hover:text-foreground"
-                            onClick={() =>
-                                setShowNotifications(!showNotifications)
-                            }
-                        >
-                            <span className="sr-only">View notifications</span>
-                            <Bell className="h-5 w-5" aria-hidden="true" />
-                            {unreadCount > 0 && (
-                                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
-                                    {unreadCount > 9 ? "9+" : unreadCount}
-                                </span>
-                            )}
-                        </Button>
+            {/* Quick search input */}
+            <div className="hidden md:flex flex-1 max-w-md items-center relative">
+                <Search className="pointer-events-none absolute left-3 h-4 w-4 text-slate-500" />
+                <input
+                    id="search-field"
+                    className="h-9 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] pl-9 pr-4 text-xs text-white placeholder:text-slate-500 outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-all"
+                    placeholder="Search transactions, EMIs, insights..."
+                    type="search"
+                />
+            </div>
 
-                        {/* Notification Dropdown Panel */}
-                        <AnimatePresence>
-                            {showNotifications && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                                    transition={{
-                                        type: "spring",
-                                        duration: 0.3,
-                                    }}
-                                    className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-2xl border border-indigo-100 bg-white shadow-2xl p-4 z-50"
-                                >
-                                    <div className="flex items-center justify-between border-b pb-2 mb-2">
-                                        <h3 className="text-sm font-bold text-foreground">
-                                            Notification Center
+            {/* Right side actions */}
+            <div className="flex items-center gap-2 sm:gap-3">
+                {/* 1-Click Pay Due Button */}
+                <Button
+                    onClick={handleQuickPayDue}
+                    size="sm"
+                    variant="outline"
+                    className="hidden sm:inline-flex border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 hover:text-white hover:border-indigo-500/50 text-xs font-semibold h-8 rounded-lg transition-all"
+                >
+                    <CreditCard className="h-3.5 w-3.5 mr-1.5 text-indigo-400" />
+                    Pay Due EMIs
+                </Button>
+
+                {/* Quick Add Expense Link */}
+                <Link href="/dashboard/expenses">
+                    <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold h-8 rounded-lg shadow-md shadow-indigo-600/20"
+                    >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        <span className="hidden sm:inline">Add Expense</span>
+                        <span className="sm:hidden">Add</span>
+                    </Button>
+                </Link>
+
+                {/* Notification Dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="relative h-9 w-9 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06]"
+                        onClick={() => setShowNotifications(!showNotifications)}
+                    >
+                        <span className="sr-only">View notifications</span>
+                        <Bell className="h-4 w-4" />
+                        {unreadCount > 0 && (
+                            <span className="absolute 1 top-1.5 right-1.5 flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                            </span>
+                        )}
+                    </Button>
+
+                    <AnimatePresence>
+                        {showNotifications && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                                transition={{ duration: 0.2 }}
+                                className="absolute right-0 mt-3 w-80 sm:w-96 origin-top-right rounded-2xl border border-white/[0.1] bg-[#0f172a]/95 backdrop-blur-2xl shadow-2xl p-4 z-50 text-white"
+                            >
+                                <div className="flex items-center justify-between border-b border-white/[0.08] pb-3 mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-sm font-bold text-white">
+                                            Notifications
                                         </h3>
                                         {unreadCount > 0 && (
-                                            <button
-                                                onClick={handleMarkAllRead}
-                                                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                                            >
-                                                <CheckCheck className="h-3.5 w-3.5" />{" "}
-                                                Mark all read
-                                            </button>
+                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                                {unreadCount} new
+                                            </span>
                                         )}
                                     </div>
+                                    {unreadCount > 0 && (
+                                        <button
+                                            onClick={handleMarkAllRead}
+                                            className="text-xs font-medium text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                                        >
+                                            <CheckCheck className="h-3.5 w-3.5" />
+                                            Mark all read
+                                        </button>
+                                    )}
+                                </div>
 
-                                    <div className="max-h-72 overflow-y-auto space-y-2 py-1 pr-1 scrollbar-thin">
-                                        {notifications.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground">
-                                                <Inbox className="h-8 w-8 mb-2 text-muted-foreground/50" />
-                                                <p className="text-xs font-medium">
-                                                    All caught up! 🎉
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            notifications.map((n) => (
-                                                <div
-                                                    key={n.id}
-                                                    className={`relative rounded-xl border p-3 transition-colors ${
-                                                        n.read
-                                                            ? "bg-muted/40 border-border"
-                                                            : "bg-indigo-50 border-indigo-200"
-                                                    }`}
-                                                >
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="space-y-1 pr-6">
-                                                            <h4 className="text-xs font-bold text-foreground leading-snug">
-                                                                {n.title}
-                                                            </h4>
-                                                            <p className="text-[11px] text-muted-foreground leading-normal">
-                                                                {n.body}
-                                                            </p>
-                                                            <span className="text-[9px] font-semibold text-muted-foreground/60 block mt-1">
-                                                                {n.date}
-                                                            </span>
-                                                        </div>
-
-                                                        {/* Notification Control Buttons */}
-                                                        <div className="absolute right-2 top-2 flex flex-col gap-1.5">
-                                                            {!n.read && (
-                                                                <button
-                                                                    onClick={() =>
-                                                                        markNotificationRead(
-                                                                            n.id,
-                                                                        )
-                                                                    }
-                                                                    className="rounded-full p-1 bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                                                                    title="Mark as Read"
-                                                                >
-                                                                    <Check className="h-3 w-3" />
-                                                                </button>
-                                                            )}
-                                                            <button
-                                                                onClick={() =>
-                                                                    triggerDeleteNotification(
-                                                                        n.id,
-                                                                    )
-                                                                }
-                                                                className="rounded-full p-1 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-                                                                title="Delete Notification"
-                                                            >
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </button>
-                                                        </div>
-
-                                                        {/* Unread Status Dot */}
+                                <div className="max-h-72 overflow-y-auto space-y-2 py-1 pr-1 scrollbar-thin">
+                                    {notifications.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-8 text-center text-slate-500">
+                                            <Inbox className="h-8 w-8 mb-2 text-slate-600" />
+                                            <p className="text-xs font-medium text-slate-400">
+                                                All caught up! 🎉
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        notifications.map((n) => (
+                                            <div
+                                                key={n.id}
+                                                className={`relative rounded-xl border p-3 transition-colors ${
+                                                    n.read
+                                                        ? "bg-white/[0.02] border-white/[0.04] text-slate-400"
+                                                        : "bg-indigo-500/10 border-indigo-500/25 text-slate-200"
+                                                }`}
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="space-y-0.5 flex-1 pr-2">
+                                                        <p className="text-xs font-semibold text-white">
+                                                            {n.title}
+                                                        </p>
+                                                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                                                            {n.body}
+                                                        </p>
+                                                        <span className="text-[10px] text-slate-500 block pt-1">
+                                                            {n.date}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0">
                                                         {!n.read && (
-                                                            <span className="absolute bottom-2 right-3 h-2 w-2 rounded-full bg-primary" />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 text-indigo-400 hover:bg-indigo-500/20"
+                                                                onClick={() => markNotificationRead(n.id)}
+                                                                title="Mark as read"
+                                                            >
+                                                                <Check className="h-3 w-3" />
+                                                            </Button>
                                                         )}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                                            onClick={() => triggerDeleteNotification(n.id)}
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
                                                     </div>
                                                 </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
 
-                    {/* Separator */}
-                    <div
-                        className="hidden lg:block lg:h-6 lg:w-px lg:bg-border"
-                        aria-hidden="true"
-                    />
-
-                    {/* Profile dropdown */}
-                    <div className="flex items-center gap-x-4 lg:gap-x-6">
-                        <div className="-m-1.5 flex items-center p-1.5">
-                            <Avatar className="h-8 w-8">
-                                <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                                    {initials}
-                                </AvatarFallback>
-                            </Avatar>
-                            <span className="hidden lg:flex lg:items-center">
-                                <span
-                                    className="ml-3 text-sm font-semibold leading-6 text-foreground"
-                                    aria-hidden="true"
-                                >
-                                    {user?.name || "John Doe"}
-                                </span>
-                            </span>
+                {/* User Avatar */}
+                <Link href="/dashboard/settings">
+                    <div className="flex items-center gap-2 pl-1 group cursor-pointer">
+                        <Avatar className="h-8 w-8 rounded-xl border border-indigo-500/30 bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-bold text-xs shadow-md">
+                            <AvatarFallback className="bg-transparent text-white font-semibold text-xs">
+                                {initials}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="hidden lg:block text-left">
+                            <p className="text-xs font-semibold text-white leading-tight group-hover:text-indigo-300 transition-colors">
+                                {user?.name ? user.name.split(" ")[0] : "Account"}
+                            </p>
+                            <p className="text-[10px] text-emerald-400 font-medium">
+                                Pro Member
+                            </p>
                         </div>
                     </div>
-                </div>
+                </Link>
             </div>
 
             <DeleteModal
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={handleConfirmDeleteNotification}
-                title="Delete Alert Notification"
-                description="Are you sure you want to dismiss and permanently delete this notification? It will be removed from your cloud account logs."
+                title="Delete Notification"
+                itemName="this notification"
+                description="Are you sure you want to remove this notification alert?"
             />
         </header>
     );

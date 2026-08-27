@@ -33,9 +33,7 @@ export function AIAnalysisCard({
     const { user, emis, expenses, goals } = useStore();
     const [result, setResult] = useState<string>("");
     const [loading, setLoading] = useState(false);
-    const [language, setLanguage] = useState<"english" | "malayalam">(
-        "malayalam",
-    );
+    const [language, setLanguage] = useState<"english" | "malayalam">("malayalam");
     const autoRef = useRef(false);
     const today = new Date().toISOString().split("T")[0];
     const storageKey = cacheKey ? `ai-card-${cacheKey}` : null;
@@ -59,10 +57,8 @@ export function AIAnalysisCard({
                 }),
             });
             const data = await res.json();
-            const text =
-                data.reply || "Couldn't generate analysis. Please try again.";
+            const text = data.reply || "Couldn't generate analysis. Please try again.";
             setResult(text);
-            // Cache today's result
             if (storageKey) {
                 localStorage.setItem(
                     storageKey,
@@ -70,15 +66,12 @@ export function AIAnalysisCard({
                 );
             }
         } catch {
-            setResult(
-                "Connection error. Please check your internet and try again.",
-            );
+            setResult("Connection error. Please check your internet and try again.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Load cached result, or auto-generate once per day
     useEffect(() => {
         if (autoRef.current || !storageKey) return;
         autoRef.current = true;
@@ -104,7 +97,6 @@ export function AIAnalysisCard({
         if (result) generate(lang);
     };
 
-    // Render markdown-ish text into formatted blocks
     const renderText = (text: string) => {
         return text.split("\n").map((line, i) => {
             const trimmed = line.trim();
@@ -112,8 +104,8 @@ export function AIAnalysisCard({
             if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
                 return (
                     <div key={i} className="flex gap-2 items-start">
-                        <span className="text-indigo-500 mt-0.5">•</span>
-                        <span className="flex-1">
+                        <span className="text-indigo-400 mt-0.5">•</span>
+                        <span className="flex-1 text-slate-200">
                             {formatBold(trimmed.replace(/^[*-]\s/, ""))}
                         </span>
                     </div>
@@ -122,18 +114,18 @@ export function AIAnalysisCard({
             if (/^\d+\.\s/.test(trimmed)) {
                 return (
                     <div key={i} className="flex gap-2 items-start">
-                        <span className="flex-1">{formatBold(trimmed)}</span>
+                        <span className="flex-1 text-slate-200">{formatBold(trimmed)}</span>
                     </div>
                 );
             }
             if (trimmed.startsWith("#")) {
                 return (
-                    <h4 key={i} className="font-bold text-sm mt-2">
+                    <h4 key={i} className="font-bold text-sm text-white mt-2">
                         {trimmed.replace(/^#+\s/, "")}
                     </h4>
                 );
             }
-            return <p key={i}>{formatBold(trimmed)}</p>;
+            return <p key={i} className="text-slate-300 leading-relaxed">{formatBold(trimmed)}</p>;
         });
     };
 
@@ -141,7 +133,7 @@ export function AIAnalysisCard({
         const parts = text.split(/(\*\*[^*]+\*\*)/g);
         return parts.map((part, i) =>
             part.startsWith("**") && part.endsWith("**") ? (
-                <strong key={i} className="font-semibold text-foreground">
+                <strong key={i} className="font-semibold text-white">
                     {part.slice(2, -2)}
                 </strong>
             ) : (
@@ -152,27 +144,35 @@ export function AIAnalysisCard({
 
     return (
         <Card className="glassmorphism border-violet-500/20">
-            <CardHeader>
+            <CardHeader className="p-5 pb-3">
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-gradient-to-tr from-violet-500 to-indigo-500">
+                    <div className="p-1.5 rounded-lg bg-gradient-to-tr from-violet-600 to-indigo-600 shadow-md shadow-violet-600/20">
                         <Brain className="h-4 w-4 text-white" />
                     </div>
-                    <CardTitle>{title}</CardTitle>
+                    <CardTitle className="text-base font-bold text-white">{title}</CardTitle>
                 </div>
-                <CardDescription>{description}</CardDescription>
+                <CardDescription className="text-xs text-slate-400">{description}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5 pt-0">
                 {/* Language Toggle */}
-                <div className="flex items-center gap-1 mb-3 p-1 rounded-lg bg-muted/50 w-fit">
+                <div className="flex items-center gap-1 mb-3.5 p-1 rounded-xl bg-slate-900/80 border border-white/[0.08] w-fit">
                     <button
                         onClick={() => switchLanguage("english")}
-                        className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "english" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                            language === "english"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : "text-slate-400 hover:text-white"
+                        }`}
                     >
                         English
                     </button>
                     <button
                         onClick={() => switchLanguage("malayalam")}
-                        className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${language === "malayalam" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground"}`}
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                            language === "malayalam"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : "text-slate-400 hover:text-white"
+                        }`}
                     >
                         മലയാളം
                     </button>
@@ -181,15 +181,15 @@ export function AIAnalysisCard({
                 {!result && !loading && (
                     <Button
                         onClick={() => generate()}
-                        className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white"
+                        className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold h-9 shadow-md shadow-violet-600/20"
                     >
                         <Sparkles className="mr-2 h-4 w-4" /> {buttonLabel}
                     </Button>
                 )}
                 {loading && (
                     <div className="flex flex-col items-center justify-center py-8 gap-3">
-                        <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
-                        <p className="text-xs text-muted-foreground">
+                        <Loader2 className="h-7 w-7 text-indigo-400 animate-spin" />
+                        <p className="text-xs text-slate-400">
                             {language === "malayalam"
                                 ? "AI നിങ്ങളുടെ സാമ്പത്തിക വിവരങ്ങൾ വിശകലനം ചെയ്യുന്നു..."
                                 : "AI is analyzing your finances..."}
@@ -197,23 +197,18 @@ export function AIAnalysisCard({
                     </div>
                 )}
                 {result && !loading && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                    >
-                        <div className="text-xs text-muted-foreground leading-relaxed space-y-1 rounded-lg bg-violet-50/50 border border-violet-100 p-4">
+                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                        <div className="text-xs leading-relaxed space-y-1.5 rounded-xl bg-violet-950/20 border border-violet-500/20 p-4">
                             {renderText(result)}
                         </div>
                         <Button
                             onClick={() => generate()}
                             variant="ghost"
                             size="sm"
-                            className="mt-3 text-violet-600 hover:text-violet-700"
+                            className="mt-3 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 text-xs font-semibold"
                         >
-                            <RefreshCw className="mr-2 h-3.5 w-3.5" />{" "}
-                            {language === "malayalam"
-                                ? "വീണ്ടും സൃഷ്ടിക്കുക"
-                                : "Regenerate"}
+                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />{" "}
+                            {language === "malayalam" ? "വീണ്ടും സൃഷ്ടിക്കുക" : "Regenerate Analysis"}
                         </Button>
                     </motion.div>
                 )}

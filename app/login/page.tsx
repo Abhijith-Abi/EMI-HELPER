@@ -9,7 +9,6 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Wallet } from "lucide-react";
 import { signInWithPopup } from "firebase/auth";
 import {
     auth,
@@ -19,6 +18,7 @@ import {
 import { useStore } from "@/store";
 import { toast } from "sonner";
 import { Logo } from "@/components/ui/logo";
+import { Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
     const { loginUser, user } = useStore();
@@ -45,7 +45,7 @@ export default function LoginPage() {
                     displayName: "Abhijith Dev",
                     email: "abhijith@example.com",
                 });
-                toast.success("Logged in successfully");
+                toast.success("Welcome to Cash ERP!");
                 window.location.href = "/dashboard";
                 return;
             }
@@ -67,36 +67,37 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-muted/20 p-4">
-            <Card className="w-full max-w-sm glassmorphism border border-white/10 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mt-12 -mr-12 w-32 h-32 rounded-full bg-blue-500/10 blur-2xl" />
-                <div className="absolute bottom-0 left-0 -mb-12 -ml-12 w-32 h-32 rounded-full bg-indigo-500/10 blur-2xl" />
+        <div className="flex min-h-screen items-center justify-center bg-[#07090e] p-4 relative overflow-hidden">
+            {/* Ambient background glowing orbs */}
+            <div className="absolute top-1/4 left-1/3 w-96 h-96 rounded-full bg-indigo-600/15 blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/3 w-96 h-96 rounded-full bg-violet-600/15 blur-[120px] pointer-events-none" />
 
-                <CardHeader className="space-y-1 text-center relative z-10 pb-2">
-                    <div className="flex justify-center mb-4">
+            <Card className="w-full max-w-sm glassmorphism-glow border-white/[0.1] shadow-2xl relative overflow-hidden text-white">
+                <CardHeader className="space-y-2 text-center relative z-10 pb-2">
+                    <div className="flex justify-center mb-3">
                         <Logo iconSize={56} />
                     </div>
-                    <CardTitle className="text-2xl font-bold tracking-tight">
+                    <CardTitle className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-100 to-white">
                         Cash ERP
                     </CardTitle>
-                    <CardDescription>
-                        Sign in to manage your finances
+                    <CardDescription className="text-xs text-slate-400">
+                        Next-Gen Debt Amortization & Personal Finance Suite
                     </CardDescription>
                 </CardHeader>
 
-                <CardContent className="relative z-10 pt-4 pb-6">
+                <CardContent className="relative z-10 pt-4 pb-6 space-y-4">
                     <Button
                         type="button"
-                        className="w-full h-12 text-base font-medium flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm transition-all duration-200"
+                        className="w-full h-11 text-xs font-semibold flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-900 border border-transparent shadow-lg shadow-white/5 transition-all duration-200 cursor-pointer rounded-xl"
                         onClick={handleGoogleSignIn}
                         disabled={loading}
                     >
                         {loading ? (
-                            <span>Signing in...</span>
+                            <span>Authenticating...</span>
                         ) : (
                             <>
                                 <svg
-                                    className="h-5 w-5 shrink-0"
+                                    className="h-4 w-4 shrink-0"
                                     viewBox="0 0 24 24"
                                     xmlns="http://www.w3.org/2000/svg"
                                 >
@@ -117,10 +118,15 @@ export default function LoginPage() {
                                         fill="#EA4335"
                                     />
                                 </svg>
-                                <span>Continue with Google</span>
+                                <span>Sign In with Google</span>
                             </>
                         )}
                     </Button>
+
+                    <div className="pt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                        <span>Encrypted Firebase Cloud Storage</span>
+                    </div>
                 </CardContent>
             </Card>
         </div>

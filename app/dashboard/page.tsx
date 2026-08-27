@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useStore } from "@/store";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
     Wallet,
     CreditCard,
     PiggyBank,
-    Target,
     TrendingUp,
     AlertCircle,
     Calendar,
     Clock,
     CheckCircle2,
+    Sparkles,
+    ArrowUpRight,
+    ArrowDownRight,
+    ShieldCheck,
+    Check,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { motion } from "framer-motion";
@@ -35,13 +40,15 @@ import {
     triggerLocalDueNotifications,
 } from "@/lib/firebase/messaging";
 import { DailyBriefing } from "@/components/daily-briefing";
+import Link from "next/link";
 
-const COLORS = ["#6366f1", "#06b6d4", "#f59e0b", "#ec4899", "#8b5cf6"];
+const PIE_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4"];
 
 export default function DashboardPage() {
     const [mounted, setMounted] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState<string>("");
-    const { user, emis, expenses, goals, toggleEmiStatus } = useStore();
+    const { user, emis, expenses, goals, payEmiInstallment, undoEmiPayment, payAllDueEmis } =
+        useStore();
 
     useEffect(() => {
         setMounted(true);
@@ -59,38 +66,34 @@ export default function DashboardPage() {
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     };
 
-    // Register FCM Push token exactly once when the user is logged in
+    // Register FCM Push token
     useEffect(() => {
         if (mounted && user?.id) {
             requestNotificationPermissionAndRegisterToken(user.id);
         }
     }, [mounted, user?.id]);
 
-    // Scan and trigger local reminders when EMIs state changes
+    // Local notifications & alerts
     useEffect(() => {
         if (!mounted || emis.length === 0) return;
 
-        // Scan and trigger desktop notifications for EMIs due within 3 days
         triggerLocalDueNotifications(emis);
 
         const { notifications, dismissedNotifications } = useStore.getState();
 
-        // Add in-app notifications for EMIs due within 3 days
         emis.forEach((emi) => {
-            if (emi.status !== "Active") return;
+            if (emi.status !== "Active" || emi.remaining_months <= 0) return;
             const days = getDaysRemaining(emi.due_date);
             if (days >= 0 && days <= 3) {
                 const notifId = `emi-due-${emi.id}-${emi.due_date}`;
-                const alreadyExists = notifications.some(
-                    (n) => n.id === notifId,
-                );
+                const alreadyExists = notifications.some((n) => n.id === notifId);
                 const wasDismissed = dismissedNotifications.includes(notifId);
                 if (!alreadyExists && !wasDismissed) {
                     useStore.setState((state) => ({
                         notifications: [
                             {
                                 id: notifId,
-                                title: `EMI Due: ${emi.title}`,
+                                title: `EMI Due Soon: ${emi.title}`,
                                 body: `₹${emi.emi_amount.toLocaleString()} is due on ${emi.due_date} (${days === 0 ? "today" : `in ${days} day${days > 1 ? "s" : ""}`})`,
                                 date: new Date().toISOString().split("T")[0],
                                 read: false,
@@ -101,102 +104,112 @@ export default function DashboardPage() {
                 }
             }
         });
-
-        const overdueCount = emis.filter(
-            (e) => e.status === "Active" && getDaysRemaining(e.due_date) < 0,
-        ).length;
-        const dueSoonCount = emis.filter(
-            (e) =>
-                e.status === "Active" &&
-                getDaysRemaining(e.due_date) >= 0 &&
-                getDaysRemaining(e.due_date) <= 5,
-        ).length;
-
-        // Show these toast alerts only once per day
-        const todayStr = new Date().toISOString().split("T")[0];
-
-        if (overdueCount > 0) {
-            const key = `toast-overdue-${todayStr}`;
-            if (!localStorage.getItem(key)) {
-                localStorage.setItem(key, "1");
-                toast.error(
-                    `Warning: You have ${overdueCount} overdue EMI${overdueCount > 1 ? "s" : ""}! Please pay them immediately.`,
-                    { id: "overdue-alert", duration: 8000 },
-                );
-            }
-        }
-        if (dueSoonCount > 0) {
-            const key = `toast-duesoon-${todayStr}`;
-            if (!localStorage.getItem(key)) {
-                localStorage.setItem(key, "1");
-                toast.warning(
-                    `Notice: ${dueSoonCount} EMI${dueSoonCount > 1 ? "s are" : " is"} due within the next 5 days.`,
-                    { id: "due-soon-alert", duration: 6000 },
-                );
-            }
-        }
     }, [mounted, emis]);
 
-    const totalEMI = emis.reduce((sum, emi) => sum + emi.emi_amount, 0);
-    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const balance = (user?.salary || 0) - totalEMI - totalExpenses;
-    const healthScore = Math.min(
-        100,
-        Math.max(0, Math.round((balance / (user?.salary || 1)) * 100)),
+    // Financial calculations
+    const activeEmis = useMemo(
+        () => emis.filter((e) => e.status === "Active" && e.remaining_months > 0),
+        [emis],
+    );
+    const totalActiveEMI = useMemo(
+        () => activeEmis.reduce((sum, emi) => sum + emi.emi_amount, 0),
+        [activeEmis],
     );
 
-    const emiMonths = Array.from(
-        new Set(emis.map((e) => e.due_date.substring(0, 7))),
-    ).sort();
-    const nowStr = new Date();
-    const currentMonthStr = `${nowStr.getFullYear()}-${String(nowStr.getMonth() + 1).padStart(2, "0")}`;
-    if (!emiMonths.includes(currentMonthStr)) {
-        emiMonths.push(currentMonthStr);
-        emiMonths.sort();
-    }
+    const currentMonthExpenses = useMemo(() => {
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        return expenses.filter((e) => e.date.startsWith(monthKey));
+    }, [expenses]);
+
+    const totalMonthSpend = useMemo(
+        () => currentMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0),
+        [currentMonthExpenses],
+    );
+
+    const salary = user?.salary || 0;
+    const availableBalance = salary - totalActiveEMI - totalMonthSpend;
+    const emiRatio = salary > 0 ? Math.round((totalActiveEMI / salary) * 100) : 0;
+    const healthScore = Math.min(
+        100,
+        Math.max(
+            0,
+            Math.round(
+                (availableBalance / (salary || 1)) * 50 +
+                    (100 - emiRatio) * 0.3 +
+                    (goals.length > 0 ? 20 : 10),
+            ),
+        ),
+    );
+
+    // Filter EMIs by selected month
+    const emiMonths = useMemo(() => {
+        const set = new Set(emis.map((e) => e.due_date.substring(0, 7)));
+        const now = new Date();
+        const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        set.add(currentMonthStr);
+        return Array.from(set).sort();
+    }, [emis]);
 
     const formatMonthName = (monthStr: string) => {
         if (!monthStr) return "";
         const [year, month] = monthStr.split("-");
-        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-        return date.toLocaleString("default", {
-            month: "long",
-            year: "numeric",
-        });
+        const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+        return date.toLocaleString("default", { month: "long", year: "numeric" });
     };
 
-    const filteredEMIs = emis.filter((e) =>
-        e.due_date.startsWith(selectedMonth),
+    const filteredEMIs = useMemo(
+        () => emis.filter((e) => e.due_date.startsWith(selectedMonth)),
+        [emis, selectedMonth],
     );
 
-    // Mock data for charts
-    const expenseData = expenses.reduce((acc: any, exp) => {
-        const existing = acc.find((a: any) => a.name === exp.category);
-        if (existing) {
-            existing.value += exp.amount;
-        } else {
-            acc.push({ name: exp.category, value: exp.amount });
-        }
-        return acc;
-    }, []);
+    // Chart datasets
+    const expenseCategoryData = useMemo(() => {
+        const categoryMap: Record<string, number> = {};
+        expenses.forEach((e) => {
+            categoryMap[e.category] = (categoryMap[e.category] || 0) + e.amount;
+        });
+        return Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
+    }, [expenses]);
 
-    const emiData = emis.map((emi) => ({
-        name: emi.title,
-        amount: emi.emi_amount,
-    }));
+    const cashFlowBarData = useMemo(
+        () => [
+            { name: "Salary", amount: salary, fill: "#6366f1" },
+            { name: "Active EMIs", amount: totalActiveEMI, fill: "#f43f5e" },
+            { name: "Expenses", amount: totalMonthSpend, fill: "#f59e0b" },
+            {
+                name: "Net Cash",
+                amount: Math.max(0, availableBalance),
+                fill: availableBalance >= 0 ? "#10b981" : "#f43f5e",
+            },
+        ],
+        [salary, totalActiveEMI, totalMonthSpend, availableBalance],
+    );
+
+    const handlePayEmi = (emi: (typeof emis)[0]) => {
+        payEmiInstallment(emi.id, true);
+        toast.success(`Recorded installment for "${emi.title}". Ledger updated.`);
+    };
+
+    const handleBatchPay = () => {
+        const count = payAllDueEmis(true);
+        if (count > 0) {
+            toast.success(`Paid ${count} due EMI installment${count > 1 ? "s" : ""}!`);
+        } else {
+            toast.info("No active EMIs are due right now.");
+        }
+    };
 
     const containerVariants = {
         hidden: { opacity: 0 },
         show: {
             opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-            },
+            transition: { staggerChildren: 0.08 },
         },
     };
 
     const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
+        hidden: { y: 15, opacity: 0 },
         show: { y: 0, opacity: 1 },
     };
 
@@ -207,493 +220,370 @@ export default function DashboardPage() {
             initial="hidden"
             animate="show"
         >
+            {/* Greeting Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-                        Welcome back,{" "}
-                        {user?.name ? user.name.split(" ")[0] : "User"}!
+                    <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        <span>Welcome back, {user?.name ? user.name.split(" ")[0] : "Financier"}!</span>
+                        <span className="text-xl">👋</span>
                     </h2>
-                    <p className="text-muted-foreground">
-                        Here's your financial overview for this month.
+                    <p className="text-sm text-slate-400">
+                        Here is your real-time cash flow & debt recovery cockpit.
                     </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={handleBatchPay}
+                        variant="outline"
+                        size="sm"
+                        className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 text-xs font-semibold h-8"
+                    >
+                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-emerald-400" />
+                        1-Click Pay Due EMIs
+                    </Button>
+                    <Link href="/dashboard/emis">
+                        <Button
+                            size="sm"
+                            className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold h-8 shadow-md shadow-indigo-600/20"
+                        >
+                            Manage EMIs
+                        </Button>
+                    </Link>
                 </div>
             </div>
 
-            {totalEMI > (user?.salary || 0) * 0.5 && (
-                <Alert
-                    variant="destructive"
-                    className="glassmorphism border-l-4 border-l-red-500 bg-red-50 text-red-700"
-                >
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                    <AlertTitle className="text-red-600 font-semibold">
-                        High EMI Burden Warning
+            {/* High EMI Warning Alert */}
+            {emiRatio > 50 && (
+                <Alert className="glassmorphism border-rose-500/30 bg-rose-500/10 text-rose-300">
+                    <AlertCircle className="h-4 w-4 text-rose-400" />
+                    <AlertTitle className="text-rose-400 font-bold text-sm">
+                        High Debt Pressure Warning ({emiRatio}% of salary)
                     </AlertTitle>
-                    <AlertDescription className="text-red-600/90 text-xs">
-                        Your total EMI (₹{totalEMI.toLocaleString()}) exceeds
-                        50% of your monthly salary (₹
-                        {(user?.salary || 0).toLocaleString()}). Avoid taking
-                        new loans to maintain financial stability.
+                    <AlertDescription className="text-xs text-rose-300/90 mt-1">
+                        Active EMIs total ₹{totalActiveEMI.toLocaleString()}, exceeding safe financial limits
+                        (recommended &lt; 35%). Use the AI Recovery Engine to explore the Avalanche paydown strategy.
                     </AlertDescription>
                 </Alert>
             )}
 
-            {/* Daily AI Briefing — auto-generates once per day */}
+            {/* AI Daily Briefing */}
             <motion.div variants={itemVariants}>
                 <DailyBriefing />
             </motion.div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <motion.div variants={itemVariants} className="h-full">
-                    <Card className="glassmorphism hover:scale-[1.02] transition-all duration-300 py-6 h-full">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Monthly Salary
-                            </CardTitle>
-                            <div className="p-2.5 rounded-lg bg-blue-500/15 text-blue-400">
-                                <Wallet className="h-5 w-5" />
+            {/* Hero Stat Cards */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <motion.div variants={itemVariants}>
+                    <Card className="glassmorphism hover:border-indigo-500/30 transition-all p-5 h-full">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-400 font-medium">Monthly Salary</span>
+                            <div className="p-2 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/20">
+                                <Wallet className="h-4 w-4" />
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400">
-                                ₹{(user?.salary || 0).toLocaleString()}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Net monthly income
-                            </p>
-                        </CardContent>
+                        </div>
+                        <div className="mt-3 text-2xl font-bold text-white font-mono">
+                            ₹{salary.toLocaleString()}
+                        </div>
+                        <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-400">
+                            <span>Primary net earnings</span>
+                        </div>
                     </Card>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="h-full">
-                    <Card className="glassmorphism hover:scale-[1.02] transition-all duration-300 py-6 h-full">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Total EMI Sum
-                            </CardTitle>
-                            <div className="p-2.5 rounded-lg bg-red-500/15 text-red-400">
-                                <CreditCard className="h-5 w-5" />
+                <motion.div variants={itemVariants}>
+                    <Card className="glassmorphism hover:border-rose-500/30 transition-all p-5 h-full">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-400 font-medium">Active Monthly EMI</span>
+                            <div className="p-2 rounded-xl bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                                <CreditCard className="h-4 w-4" />
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-rose-400">
-                                ₹{totalEMI.toLocaleString()}
-                            </div>
-                            <p className="text-xs text-red-400 mt-1 font-semibold">
-                                {Math.round(
-                                    (totalEMI / (user?.salary || 1)) * 100,
-                                )}
-                                % of salary
-                            </p>
-                        </CardContent>
+                        </div>
+                        <div className="mt-3 text-2xl font-bold text-rose-400 font-mono">
+                            ₹{totalActiveEMI.toLocaleString()}
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">{activeEmis.length} active loan{activeEmis.length === 1 ? "" : "s"}</span>
+                            <span className="text-rose-400 font-semibold">{emiRatio}% of salary</span>
+                        </div>
                     </Card>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="h-full">
-                    <Card className="glassmorphism hover:scale-[1.02] transition-all duration-300 py-6 h-full">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Available Balance
-                            </CardTitle>
-                            <div className="p-2.5 rounded-lg bg-emerald-500/15 text-emerald-400">
-                                <PiggyBank className="h-5 w-5" />
+                <motion.div variants={itemVariants}>
+                    <Card className="glassmorphism hover:border-emerald-500/30 transition-all p-5 h-full">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-400 font-medium">Available Cash</span>
+                            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                                <PiggyBank className="h-4 w-4" />
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div
-                                className={`text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${balance >= 0 ? "from-emerald-400 to-teal-400" : "from-red-400 to-rose-400"}`}
-                            >
-                                ₹{balance.toLocaleString()}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                After EMIs & Expenses
-                            </p>
-                        </CardContent>
+                        </div>
+                        <div
+                            className={`mt-3 text-2xl font-bold font-mono ${
+                                availableBalance >= 0 ? "text-emerald-400" : "text-rose-400"
+                            }`}
+                        >
+                            ₹{availableBalance.toLocaleString()}
+                        </div>
+                        <div className="mt-1 flex items-center gap-1 text-[11px] text-slate-400">
+                            <span>After EMIs & month spend</span>
+                        </div>
                     </Card>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="h-full">
-                    <Card className="glassmorphism hover:scale-[1.02] transition-all duration-300 py-6 h-full">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Health Score
-                            </CardTitle>
-                            <div className="p-2.5 rounded-lg bg-violet-500/15 text-violet-400">
-                                <TrendingUp className="h-5 w-5" />
+                <motion.div variants={itemVariants}>
+                    <Card className="glassmorphism hover:border-violet-500/30 transition-all p-5 h-full">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-400 font-medium">Financial Health</span>
+                            <div className="p-2 rounded-xl bg-violet-500/15 text-violet-400 border border-violet-500/20">
+                                <TrendingUp className="h-4 w-4" />
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div
-                                className={`text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r ${healthScore > 50 ? "from-emerald-400 to-teal-400" : healthScore > 25 ? "from-amber-400 to-orange-400" : "from-red-400 to-rose-400"}`}
-                            >
-                                {healthScore}/100
-                            </div>
-                            <p
-                                className={`text-xs mt-1 font-semibold ${healthScore > 50 ? "text-emerald-400" : healthScore > 25 ? "text-amber-400" : "text-red-400"}`}
-                            >
-                                {healthScore > 50
-                                    ? "Looking good!"
-                                    : healthScore > 25
-                                      ? "Needs attention"
-                                      : "Critical state"}
-                            </p>
-                        </CardContent>
+                        </div>
+                        <div
+                            className={`mt-3 text-2xl font-bold font-mono ${
+                                healthScore >= 70
+                                    ? "text-emerald-400"
+                                    : healthScore >= 45
+                                      ? "text-amber-400"
+                                      : "text-rose-400"
+                            }`}
+                        >
+                            {healthScore}/100
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400">
+                                {healthScore >= 70
+                                    ? "Solid Health"
+                                    : healthScore >= 45
+                                      ? "Moderate"
+                                      : "Action Needed"}
+                            </span>
+                            <span className="text-violet-400 font-medium">AI Score</span>
+                        </div>
                     </Card>
                 </motion.div>
             </div>
 
-            {/* Monthly EMI Due Reminders & Alerts */}
-            <motion.div variants={itemVariants} className="mt-6">
-                <Card className="glassmorphism">
-                    <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border">
+            {/* Monthly EMI Due Schedule Card */}
+            <motion.div variants={itemVariants}>
+                <Card className="glassmorphism border-white/[0.08] overflow-hidden">
+                    <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 border-b border-white/[0.06]">
                         <div>
-                            <CardTitle className="text-lg font-bold tracking-tight">
-                                EMI Due Reminders & Notifications
+                            <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-indigo-400" />
+                                Monthly EMI Schedules & Due Dates
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                Month-wise active schedules and payment status
-                            </p>
+                            <CardDescription className="text-xs text-slate-400">
+                                Real-time installment tracker. Paying will advance due date and decrease remaining months.
+                            </CardDescription>
                         </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                Select Month:
-                            </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">Billing Month:</span>
                             <select
                                 value={selectedMonth}
-                                onChange={(e) =>
-                                    setSelectedMonth(e.target.value)
-                                }
-                                className="flex-1 sm:flex-none bg-white border border-border rounded-lg px-3 py-1.5 text-sm font-semibold text-foreground outline-none cursor-pointer hover:bg-muted/50 transition-all"
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                                className="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-white outline-none cursor-pointer hover:border-indigo-500/50 transition-all"
                             >
                                 {emiMonths.map((m) => (
-                                    <option
-                                        key={m}
-                                        value={m}
-                                        className="bg-background text-foreground"
-                                    >
+                                    <option key={m} value={m} className="bg-slate-900 text-white">
                                         {formatMonthName(m)}
                                     </option>
                                 ))}
                             </select>
                         </div>
                     </CardHeader>
-                    <CardContent className="pt-6">
+                    <CardContent className="p-5">
                         {filteredEMIs.length > 0 ? (
-                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
                                 {filteredEMIs.map((emi) => {
-                                    const daysRemaining = getDaysRemaining(
-                                        emi.due_date,
-                                    );
-                                    const isPaid = emi.status === "Paid";
-                                    const isOverdue =
-                                        !isPaid && daysRemaining < 0;
-                                    const isDueSoon =
-                                        !isPaid &&
-                                        daysRemaining >= 0 &&
-                                        daysRemaining <= 5;
+                                    const daysRemaining = getDaysRemaining(emi.due_date);
+                                    const isPaid = emi.status === "Paid" || emi.remaining_months === 0;
+                                    const isOverdue = !isPaid && daysRemaining < 0;
+                                    const isDueSoon = !isPaid && daysRemaining >= 0 && daysRemaining <= 5;
 
                                     return (
-                                        <motion.div
+                                        <div
                                             key={emi.id}
-                                            whileHover={{ scale: 1.01 }}
-                                            className={`relative flex flex-col justify-between p-4 rounded-xl border transition-all duration-300 ${
+                                            className={`rounded-2xl border p-4 flex flex-col justify-between transition-all ${
                                                 isPaid
-                                                    ? "bg-emerald-50 border-emerald-200"
+                                                    ? "border-emerald-500/20 bg-emerald-500/[0.04]"
                                                     : isOverdue
-                                                      ? "bg-red-50 border-red-200 shadow-[0_0_15px_-3px_rgba(239,68,68,0.08)]"
+                                                      ? "border-rose-500/30 bg-rose-500/[0.06] shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)]"
                                                       : isDueSoon
-                                                        ? "bg-amber-50 border-amber-200 shadow-[0_0_15px_-3px_rgba(245,158,11,0.08)]"
-                                                        : "bg-blue-50 border-blue-200"
+                                                        ? "border-amber-500/30 bg-amber-500/[0.06] shadow-[0_0_15px_-3px_rgba(245,158,11,0.15)]"
+                                                        : "border-white/[0.08] bg-white/[0.02]"
                                             }`}
                                         >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div>
-                                                    <h4 className="font-bold text-sm text-foreground">
-                                                        {emi.title}
-                                                    </h4>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        Due: {emi.due_date}
+                                            <div>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div>
+                                                        <h4 className="font-bold text-sm text-white">{emi.title}</h4>
+                                                        <p className="text-xs text-slate-400 mt-0.5">
+                                                            Due: <span className="font-mono text-slate-300">{emi.due_date}</span>
+                                                        </p>
+                                                    </div>
+                                                    <span
+                                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                                            isPaid
+                                                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                                                : isOverdue
+                                                                  ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                                                  : isDueSoon
+                                                                    ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                                                    : "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
+                                                        }`}
+                                                    >
+                                                        {isPaid ? "Paid" : isOverdue ? `${Math.abs(daysRemaining)}d Overdue` : `${daysRemaining}d Left`}
                                                     </span>
                                                 </div>
-                                                <div
-                                                    className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+
+                                                <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                                                    <span>Tenure Remaining:</span>
+                                                    <span className="font-mono font-semibold text-slate-200">
+                                                        {emi.remaining_months} / {emi.total_months} months
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                                                <div>
+                                                    <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">
+                                                        EMI Amount
+                                                    </span>
+                                                    <span className="text-base font-bold text-white font-mono">
+                                                        ₹{emi.emi_amount.toLocaleString()}
+                                                    </span>
+                                                </div>
+
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => (isPaid ? undoEmiPayment(emi.id) : handlePayEmi(emi))}
+                                                    className={`h-8 text-xs font-semibold rounded-lg transition-all ${
                                                         isPaid
-                                                            ? "bg-emerald-500/15 text-emerald-500"
-                                                            : isOverdue
-                                                              ? "bg-red-500/15 text-red-500"
-                                                              : isDueSoon
-                                                                ? "bg-amber-500/15 text-amber-500"
-                                                                : "bg-blue-500/15 text-blue-500"
+                                                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                                                            : "border-indigo-500/30 bg-indigo-500/15 text-indigo-300 hover:bg-indigo-500/25 hover:text-white"
                                                     }`}
                                                 >
                                                     {isPaid ? (
                                                         <>
-                                                            <CheckCircle2 className="h-3 w-3" />{" "}
-                                                            Paid
-                                                        </>
-                                                    ) : isOverdue ? (
-                                                        <>
-                                                            <AlertCircle className="h-3 w-3" />{" "}
-                                                            -
-                                                            {Math.abs(
-                                                                daysRemaining,
-                                                            )}
-                                                            d
+                                                            <Check className="h-3.5 w-3.5 mr-1" /> Paid (Undo)
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <Clock className="h-3 w-3" />{" "}
-                                                            {daysRemaining}d
-                                                            left
+                                                            <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Pay Installment
                                                         </>
                                                     )}
-                                                </div>
+                                                </Button>
                                             </div>
-
-                                            <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                                                <div>
-                                                    <span className="text-[11px] text-muted-foreground block">
-                                                        Amount
-                                                    </span>
-                                                    <span className="text-base font-bold text-foreground">
-                                                        ₹
-                                                        {emi.emi_amount.toLocaleString()}
-                                                    </span>
-                                                </div>
-                                                <button
-                                                    onClick={() =>
-                                                        toggleEmiStatus(emi.id)
-                                                    }
-                                                    className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                                        isPaid
-                                                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
-                                                            : "border-border bg-white text-foreground hover:bg-muted"
-                                                    }`}
-                                                >
-                                                    {isPaid
-                                                        ? "Mark Unpaid"
-                                                        : "Mark as Paid"}
-                                                </button>
-                                            </div>
-
-                                            {/* Display Days Alert info text */}
-                                            {!isPaid && (
-                                                <div className="mt-3 text-[11px] font-medium">
-                                                    {isOverdue ? (
-                                                        <span className="text-red-500">
-                                                            ⚠️ Overdue by{" "}
-                                                            {Math.abs(
-                                                                daysRemaining,
-                                                            )}{" "}
-                                                            day
-                                                            {Math.abs(
-                                                                daysRemaining,
-                                                            ) > 1
-                                                                ? "s"
-                                                                : ""}
-                                                            ! Pay immediately.
-                                                        </span>
-                                                    ) : daysRemaining === 0 ? (
-                                                        <span className="text-red-500">
-                                                            🚨 Due TODAY! Pay
-                                                            now.
-                                                        </span>
-                                                    ) : isDueSoon ? (
-                                                        <span className="text-amber-500">
-                                                            ⏰ {daysRemaining}{" "}
-                                                            day
-                                                            {daysRemaining > 1
-                                                                ? "s"
-                                                                : ""}{" "}
-                                                            remaining
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted-foreground">
-                                                            {daysRemaining} days
-                                                            remaining
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </motion.div>
+                                        </div>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <Calendar className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                                <h4 className="text-sm font-semibold text-muted-foreground">
-                                    No EMIs due this month
-                                </h4>
-                                <p className="text-xs text-muted-foreground/60 mt-0.5">
-                                    Select another month or add upcoming
-                                    schedules in EMI Manager.
-                                </p>
+                            <div className="text-center py-10 text-slate-500 text-sm">
+                                No scheduled EMIs for this billing period.
                             </div>
                         )}
                     </CardContent>
                 </Card>
             </motion.div>
 
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-7">
-                <motion.div
-                    variants={itemVariants}
-                    className="col-span-1 lg:col-span-4 min-w-0"
-                >
-                    <Card className="h-full glassmorphism">
-                        <CardHeader>
-                            <CardTitle>EMI Distribution</CardTitle>
+            {/* Visual Analytics Charts Grid */}
+            <div className="grid gap-4 lg:grid-cols-2">
+                {/* Cash Flow Distribution Bar Chart */}
+                <motion.div variants={itemVariants}>
+                    <Card className="glassmorphism border-white/[0.08] p-5 h-full">
+                        <CardHeader className="p-0 pb-4">
+                            <CardTitle className="text-base font-bold text-white">
+                                Cash Flow Architecture
+                            </CardTitle>
+                            <CardDescription className="text-xs text-slate-400">
+                                Monthly comparison of earnings vs active debt liability
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[300px] min-h-[300px] w-full relative">
-                            {mounted && emiData.length > 0 ? (
+                        <CardContent className="p-0 h-[260px]">
+                            {mounted && (
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={emiData}
-                                        margin={{ bottom: 10 }}
-                                    >
-                                        <defs>
-                                            <linearGradient
-                                                id="emiGradient"
-                                                x1="0"
-                                                y1="0"
-                                                x2="0"
-                                                y2="1"
-                                            >
-                                                <stop
-                                                    offset="0%"
-                                                    stopColor="#6366f1"
-                                                    stopOpacity={0.95}
-                                                />
-                                                <stop
-                                                    offset="100%"
-                                                    stopColor="#3b82f6"
-                                                    stopOpacity={0.2}
-                                                />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            vertical={false}
-                                            stroke="rgba(120,119,198,0.1)"
-                                        />
-                                        <XAxis
-                                            dataKey="name"
-                                            stroke="#94a3b8"
-                                            fontSize={11}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
+                                    <BarChart data={cashFlowBarData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                                         <YAxis
                                             stroke="#94a3b8"
                                             fontSize={11}
                                             tickLine={false}
                                             axisLine={false}
-                                            tickFormatter={(value) =>
-                                                `₹${value}`
-                                            }
+                                            tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
                                         />
                                         <Tooltip
-                                            cursor={{
-                                                fill: "rgba(120, 119, 198, 0.05)",
-                                            }}
                                             contentStyle={{
-                                                backgroundColor:
-                                                    "hsl(var(--card)/0.8)",
-                                                backdropFilter: "blur(12px)",
-                                                border: "1px solid hsl(var(--border))",
+                                                backgroundColor: "#0f172a",
+                                                border: "1px solid rgba(255,255,255,0.1)",
                                                 borderRadius: "12px",
-                                                boxShadow:
-                                                    "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                                                color: "#ffffff",
                                             }}
+                                            formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, "Amount"]}
                                         />
-                                        <Legend
-                                            verticalAlign="bottom"
-                                            height={36}
-                                            iconType="circle"
-                                        />
-                                        <Bar
-                                            name="EMI Amount (₹)"
-                                            dataKey="amount"
-                                            fill="url(#emiGradient)"
-                                            radius={[6, 6, 0, 0]}
-                                        />
+                                        <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                                            {cashFlowBarData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                                            ))}
+                                        </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
-                                    {mounted && emiData.length === 0
-                                        ? "No active EMIs to display. Add one in EMI Manager!"
-                                        : "Loading chart..."}
-                                </div>
                             )}
                         </CardContent>
                     </Card>
                 </motion.div>
 
-                <motion.div
-                    variants={itemVariants}
-                    className="col-span-1 lg:col-span-3 min-w-0"
-                >
-                    <Card className="h-full glassmorphism">
-                        <CardHeader>
-                            <CardTitle>Expense Breakdown</CardTitle>
+                {/* Expense Categories Breakdown Pie Chart */}
+                <motion.div variants={itemVariants}>
+                    <Card className="glassmorphism border-white/[0.08] p-5 h-full">
+                        <CardHeader className="p-0 pb-4">
+                            <CardTitle className="text-base font-bold text-white">
+                                Spending Breakdown
+                            </CardTitle>
+                            <CardDescription className="text-xs text-slate-400">
+                                Category-wise expense allocations
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[300px] min-h-[300px] w-full relative flex flex-col items-center justify-center">
-                            {mounted && expenseData.length > 0 ? (
+                        <CardContent className="p-0 h-[260px]">
+                            {mounted && expenseCategoryData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
                                         <Pie
-                                            data={expenseData}
+                                            data={expenseCategoryData}
                                             cx="50%"
-                                            cy="45%"
-                                            innerRadius={65}
+                                            cy="50%"
+                                            innerRadius={55}
                                             outerRadius={85}
                                             paddingAngle={4}
                                             dataKey="value"
                                         >
-                                            {expenseData.map(
-                                                (entry: any, index: number) => (
-                                                    <Cell
-                                                        key={`cell-${index}`}
-                                                        fill={
-                                                            COLORS[
-                                                                index %
-                                                                    COLORS.length
-                                                            ]
-                                                        }
-                                                        stroke="hsl(var(--card))"
-                                                        strokeWidth={3}
-                                                    />
-                                                ),
-                                            )}
+                                            {expenseCategoryData.map((entry, index) => (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={PIE_COLORS[index % PIE_COLORS.length]}
+                                                />
+                                            ))}
                                         </Pie>
                                         <Tooltip
                                             contentStyle={{
-                                                backgroundColor:
-                                                    "hsl(var(--card)/0.8)",
-                                                backdropFilter: "blur(12px)",
-                                                border: "1px solid hsl(var(--border))",
+                                                backgroundColor: "#0f172a",
+                                                border: "1px solid rgba(255,255,255,0.1)",
                                                 borderRadius: "12px",
-                                                boxShadow:
-                                                    "0 10px 25px -5px rgba(0, 0, 0, 0.1)",
+                                                color: "#ffffff",
                                             }}
+                                            formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, "Spent"]}
                                         />
                                         <Legend
-                                            layout="horizontal"
                                             verticalAlign="bottom"
-                                            align="center"
-                                            iconType="circle"
-                                            wrapperStyle={{
-                                                fontSize: "11px",
-                                                paddingTop: "10px",
-                                            }}
+                                            height={36}
+                                            formatter={(value) => <span className="text-xs text-slate-300">{value}</span>}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
-                                    {mounted && expenseData.length === 0
-                                        ? "No expenses logged yet. Add one in Expenses!"
-                                        : "Loading chart..."}
+                                <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                                    No expense records logged yet.
                                 </div>
                             )}
                         </CardContent>
